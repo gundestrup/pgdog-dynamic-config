@@ -5,58 +5,71 @@
 ![PgDog](https://img.shields.io/badge/Made_for-PgDog-blue)
 ![Status](https://img.shields.io/badge/status-active-success)
 
-A dynamic sidecar for PgDog that automatically current PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on the environment variables is designed to run.
+A lightweight sidecar container for PgDog that dynamically discovers PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on environment variables.
 
-This container alongside PgDog  
-It discovers databases, updates configuration and PostgreSQL. files, and triggers a PgDog reload when changes occur.
+The container runs alongside PgDog, monitors database changes, updates configuration files, and triggers a PgDog reload when necessary.
 
 ---
+## 🧠 Overview
+
+`pgdog-dynamic-config` is designed to simplify configuration management for PgDog in dynamic PostgreSQL environments.
+
+Instead of manually maintaining database and user definitions, this sidecar:
+- Connects to PostgreSQL
+- Discovers all non-template databases
+- Regenerates PgDog configuration files
+- Injects credentials from environment variables
+- Reloads PgDog when configuration changes are detected
+- The container is intended to run continuously as part of a Docker Compose stack.
 
 ## 🚀 Features
 - Automatically discovers all non-template PostgreSQL databases
-- Renegerated pgdog.toml` and `users.toml`  
-- Injects passwords from environment variables changes  
-- Runs every 5 minute  
-- Reloads PgDog when configuration as a lightweight sidecar containercar expects PgDog  
-- Depends on using passthrough_auth for authentication
-- The postgres user had access to alle databases
+- Regenerates pgdog.toml and users.toml
+- Injects passwords from environment variables
+- Runs every 5 minutes
+- Reloads PgDog when configuration changes
+- Runs as a lightweight sidecar container
+- Depends on passthrough_auth for authentication
+- Requires the postgres user to have access to all databases
 ---
 
 ## 📁 Directory Structure
-The side’s configuration files to be located in a subdirectory named:
+The sidecar expects PgDog configuration files to be located in:
 	`./pgdog/`
 
 This directory must contain:
-
 - `pgdog.toml` (generated)
-- `users.toml` (generated directly into this)
+- `users.toml` (generated)
 
-The sidecar writes folder.
+The sidecar writes both files directly into this directory.
+This directory must be mounted as a volume in both the PgDog and sidecar containers.
 
 ---
 
 ## 🔧 Environment Variables
-The sidecar requires two environment variables:
+The sidecar requires the following environment variables:
 
 ```yaml
-  POSTGRES_PASSWOR: ${POSTGRES_PASSWORD}
-  PGDOG_PASSWORD: ${PGDOG_PASSWORD for the Postgres}
-````
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # for postgres db
+  PGDOG_PASSWORD: ${PGDOG_PASSWORD} # for the Postgres
+```
+### Variable Description
+- POSTGRES_PASSWORD — Password for the PostgreSQL superuser
+- PGDOG_PASSWORD — Password used by PgDog for authentication
 
-### Enviroment
-Please define
+```yaml
 environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+```
 
 # 🧩 Example Docker Compose Setup
-Below is an example of a full PostgreSQL + PgDog + pgdog-dynamic-config stack.
+Below is an example stack consisting of:
+- PostgreSQL with logging enabled
+- PgDog
+- pgdog-dynamic-config sidecar
 
-It includes:
-	* PostgreSQL with logging enabled
-	* PgDog
-	* The dynamic PgDog proxy config sidecar
-````yaml
+```yaml
 services:
   db:
     container_name: db
@@ -113,8 +126,19 @@ services:
       - ./pgdog:/pgdog
     depends_on:
       - db
-````
+```
+## 🔐 Authentication Requirements
+This setup assumes:
+- PgDog is configured with passthrough_auth
+- The postgres user has access to all databases
+- The sidecar can connect to PostgreSQL using superuser credentials
+
 # 🐶 PgDog
+
 For more information about PgDog, visit:
+
 https://github.com/pgdogdev/pgdog
 
+📜 License
+
+This project is licensed under the AGPL v3 license. See the LICENSE file for details
