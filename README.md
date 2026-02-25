@@ -1,4 +1,5 @@
 # pgdog-dynamic-config
+[![License://img.shields.io/badge/License-AG(LICENSE)
 
 A dynamic sidecar# pgdog-dynamic-config for PgDog that automatically current PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on the environment variables is designed to run.
 
@@ -112,3 +113,6 @@ services:
 # 🐶 PgDog
 For more information about PgDog, visit:
 https://github.com/pgdogdev/pgdog
+# Status of project
+![Shell](https://img.shimg.shields.io/bields.io/badge/shell-bash-green) ![PgDog](https://adge/made%20for-PgDog-orange) ![Status](https://img.shields.io/badge/status-active-success)
+
