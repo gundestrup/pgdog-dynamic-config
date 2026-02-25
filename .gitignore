@@ -1,0 +1,5 @@
+pgdog/*.toml
+pgdog/*.tmp
+pgdog/*.log
+data/
+logs/
