@@ -1,0 +1,9 @@
+FROM alpine:latest
+
+RUN apk add --no-cache postgresql-client
+
+WORKDIR /pgdog
+COPY generate-config.sh /pgdog/generate-config.sh
+RUN chmod +x /pgdog/generate-config.sh
+
+CMD sh -c "while true; do /pgdog/generate-config.sh; sleep 300; done"

@@ -1,0 +1,11 @@
+pgdog-dynamic-config:
+    build:
+      context: ./pgdog
+      dockerfile: pgdog-dynamic-config.Dockerfile 
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+    volumes:
+      - ./pgdog:/pgdog
+    depends_on:
+      - db
