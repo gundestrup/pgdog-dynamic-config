@@ -32,6 +32,9 @@ when the configuration changes.
 ├── CHANGELOG.md                    # Keep a Changelog format
 ├── LICENSE                         # AGPL v3
 ├── AI_INSTRUCTIONS.md              # THIS FILE — read first
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions: ShellCheck + markdownlint + integration tests
 ├── pgdog/
 │   ├── generate-config.sh          # Core: discovers DBs, generates TOML, reloads PgDog
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
@@ -151,6 +154,18 @@ calling the script directly.
 - PgDog user: `test-pgdog-pass-123`
 - App user: `test-app-pass-123`
 - New dynamic user: `test-new-pass-123`
+
+### CI (GitHub Actions)
+
+The workflow in `.github/workflows/ci.yml` runs on every push and pull
+request to `main`/`master` with three parallel jobs:
+
+- **ShellCheck** — lints all shell scripts for POSIX compliance and common errors.
+- **markdownlint** — lints `README.md`, `CHANGELOG.md`, and `AI_INSTRUCTIONS.md`.
+- **Integration tests** — runs the full `./tests/integration-test.sh` suite
+  on an Ubuntu runner with Docker Compose. Dumps container logs on failure.
+
+All three jobs must pass for a PR to be mergeable.
 
 ---
 

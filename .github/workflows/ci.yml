@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: shellcheck pgdog/generate-config.sh pgdog/entrypoint.sh tests/integration-test.sh
+
+  markdownlint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            README.md
+            CHANGELOG.md
+            AI_INSTRUCTIONS.md
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: docker compose version
+
+      - name: Ensure pgdog dir is writable
+        run: mkdir -p pgdog && chmod 777 pgdog
+
+      - name: Run integration tests
+        run: ./tests/integration-test.sh
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose -f tests/docker-compose.test.yml logs --tail=200 2>/dev/null || true
+          docker ps -a 2>/dev/null || true

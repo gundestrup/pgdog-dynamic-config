@@ -73,6 +73,7 @@ and fixed several bugs in the config generation script and polling loop.
 - **`.dockerignore`** — root-level Docker build context exclusions.
 - **`AI_INSTRUCTIONS.md`** — canonical instruction file for AI coding assistants (Claude, Windsurf/Devin, Cursor). Documents architecture, coding conventions, testing rules, common pitfalls, and templates for `CLAUDE.md`, `AGENTS.md`, and Windsurf workflows.
 - **`.gitignore`** — added `pgdog/.generate-config.lock` to exclude the runtime lock file from version control.
+- **`.github/workflows/ci.yml`** — GitHub Actions CI pipeline with three jobs: ShellCheck (lints all shell scripts), markdownlint (lints README, CHANGELOG, AI_INSTRUCTIONS), and integration tests (runs the full 33-assertion suite on every push and pull request).
 
 ### Removed
 
