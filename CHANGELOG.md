@@ -2,6 +2,37 @@
 
 All notable changes to `pgdog-dynamic-config` are documented in this file.
 
+## [0.2.1] - 2026-08-01
+
+Linting and cleanup pass. No functional changes — the sidecar behavior is
+unchanged. All changes are stylistic or remove dead code, and keep the
+repository passing ShellCheck and markdownlint cleanly.
+
+### Changed
+
+- **`pgdog/generate-config.sh`**
+  - Grouped the per-database `echo` statements into a single redirection block, reducing repeated `>> "$TMP"` writes without changing output.
+
+- **`README.md`**
+  - Applied markdownlint formatting fixes: blank lines before list blocks and headings, autolink syntax for the PgDog URL (`<https://...>`), and a trailing newline at end of file.
+
+### Removed
+
+- **`tests/integration-test.sh`**
+  - Removed unused `DB_PORT` and `TEST_APP_PASSWORD` variables.
+  - Removed unused `assert_not_contains` helper.
+
+### Added
+
+- **`.markdownlint.json`** — repository markdownlint configuration disabling `MD013` (line length) and `MD033` (inline HTML), matching the conventions already used in `README.md`.
+
+### Fixed
+
+- **`tests/integration-test.sh`**
+  - Added a scoped `# shellcheck disable=SC2317,SC2329` directive on the `cleanup` function so ShellCheck no longer warns about the trap handler not being explicitly invoked (code varies between ShellCheck versions).
+- **`.markdownlint.json`**
+  - Configured `MD024` with `siblings_only: true` to allow repeated `### Fixed`/`### Added`/`### Removed` headings across separate version sections in the changelog.
+
 ## [0.2.0] - 2026-08-01
 
 Refactored the sidecar for PostgreSQL 18+ compatibility, added a full

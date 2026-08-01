@@ -52,12 +52,14 @@ DBS=$(psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -t -A -c "SELECT datname FROM
 
 while IFS= read -r DB; do
   [ -z "$DB" ] && continue
-  echo '' >> "$TMP"
-  echo '[[databases]]' >> "$TMP"
-  echo "name = \"$DB\"" >> "$TMP"
-  echo "host = \"$POSTGRES_HOST\"" >> "$TMP"
-  echo 'port = 5432' >> "$TMP"
-  echo 'role = "primary"' >> "$TMP"
+  {
+    echo ''
+    echo '[[databases]]'
+    echo "name = \"$DB\""
+    echo "host = \"$POSTGRES_HOST\""
+    echo 'port = 5432'
+    echo 'role = "primary"'
+  } >> "$TMP"
 done <<EOF
 $DBS
 EOF
