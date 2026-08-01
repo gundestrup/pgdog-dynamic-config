@@ -10,11 +10,13 @@ A lightweight sidecar container for PgDog that dynamically discovers PostgreSQL 
 The container runs alongside PgDog, monitors database changes, updates configuration files, and triggers a PgDog reload when necessary.
 
 ---
+
 ## 🧠 Overview
 
 `pgdog-dynamic-config` is designed to simplify configuration management for PgDog in dynamic PostgreSQL environments.
 
 Instead of manually maintaining database and user definitions, this sidecar:
+
 - Connects to PostgreSQL
 - Discovers all non-template databases
 - Regenerates PgDog configuration files
@@ -23,6 +25,7 @@ Instead of manually maintaining database and user definitions, this sidecar:
 - The container is intended to run continuously as part of a Docker Compose stack.
 
 ## 🚀 Features
+
 - Automatically discovers all non-template PostgreSQL databases
 - Regenerates pgdog.toml and users.toml
 - Injects passwords from environment variables
@@ -33,13 +36,16 @@ Instead of manually maintaining database and user definitions, this sidecar:
 - Requires the postgres user to have access to all databases
 - Validates required credentials are set before generating config
 - Uses a lock file to prevent concurrent runs from corrupting output
+
 ---
 
 ## 📁 Directory Structure
+
 The sidecar expects PgDog configuration files to be located in:
-	`./pgdog/`
+ `./pgdog/`
 
 This directory must contain:
+
 - `pgdog.toml` (generated)
 - `users.toml` (generated)
 
@@ -89,11 +95,13 @@ environment:
 ## 🧩 Example Docker Compose Setup
 
 A complete, ready-to-run stack is in `docker-compose.yml` in the project root:
+
 - PostgreSQL with logging enabled
 - PgDog
 - `pgdog-dynamic-config` sidecar
 
 The key points for the sidecar are:
+
 - It shares the `./pgdog` volume with PgDog.
 - It waits for PostgreSQL to be healthy.
 - It joins PgDog's PID namespace (`pid: "service:pgdog"`) so `pkill -HUP pgdog` can trigger a configuration reload.
@@ -178,6 +186,7 @@ services:
 ## 🔐 Authentication Requirements
 
 This setup assumes:
+
 - PgDog is configured with `passthrough_auth`.
 - The `postgres` user has access to all databases.
 - The sidecar can connect to PostgreSQL using superuser credentials.
@@ -190,7 +199,7 @@ This setup assumes:
 
 For more information about PgDog, visit:
 
-https://github.com/pgdogdev/pgdog
+<https://github.com/pgdogdev/pgdog>
 
 ## 🧪 Tests
 

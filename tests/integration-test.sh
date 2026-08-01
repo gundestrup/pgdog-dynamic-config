@@ -46,12 +46,10 @@ PGDOG_CONTAINER="pgdog-test"
 SIDECAR_CONTAINER="pgdog-dynamic-config-test"
 
 # Host ports (mapped in docker-compose.test.yml)
-DB_PORT=5433
 PGDOG_PORT=6433
 
 TEST_POSTGRES_PASSWORD="test-pg-pass-123"
 TEST_PGDOG_PASSWORD="test-pgdog-pass-123"
-TEST_APP_PASSWORD="test-app-pass-123"
 TEST_NEW_USER_PASSWORD="test-new-pass-123"
 
 # Compose helper
@@ -86,17 +84,6 @@ assert_contains() {
     pass "$_msg"
   else
     fail "$_msg (expected '$_pattern' in $_file)"
-  fi
-}
-
-assert_not_contains() {
-  _file="$1"
-  _pattern="$2"
-  _msg="$3"
-  if grep -q "$_pattern" "$_file" 2>/dev/null; then
-    fail "$_msg (did not expect '$_pattern' in $_file)"
-  else
-    pass "$_msg"
   fi
 }
 
@@ -184,6 +171,7 @@ fi
 
 # --- Cleanup on exit ---
 
+# shellcheck disable=SC2329
 cleanup() {
   log "Tearing down"
   dc down -v --remove-orphans 2>/dev/null || true
