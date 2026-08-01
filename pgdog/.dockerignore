@@ -1,0 +1,5 @@
+*.toml
+*.tmp
+*.log
+data/
+logs/

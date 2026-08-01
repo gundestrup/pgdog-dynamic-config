@@ -26,11 +26,13 @@ Instead of manually maintaining database and user definitions, this sidecar:
 - Automatically discovers all non-template PostgreSQL databases
 - Regenerates pgdog.toml and users.toml
 - Injects passwords from environment variables
-- Runs every 5 minutes
+- Runs every `POLL_INTERVAL_SECONDS` (defaults to 5 minutes)
 - Reloads PgDog when configuration changes
 - Runs as a lightweight sidecar container
 - Depends on passthrough_auth for authentication
 - Requires the postgres user to have access to all databases
+- Validates required credentials are set before generating config
+- Uses a lock file to prevent concurrent runs from corrupting output
 ---
 
 ## 📁 Directory Structure
@@ -47,98 +49,186 @@ This directory must be mounted as a volume in both the PgDog and sidecar contain
 ---
 
 ## 🔧 Environment Variables
-The sidecar requires the following environment variables:
 
-```yaml
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # for postgres db
-  PGDOG_PASSWORD: ${PGDOG_PASSWORD} # for the Postgres
-```
-### Variable Description
-- POSTGRES_PASSWORD — Password for the PostgreSQL superuser
-- PGDOG_PASSWORD — Password used by PgDog for authentication
+The sidecar is configured through the following environment variables:
+
+### Required
+
+- `POSTGRES_PASSWORD` — Password for the PostgreSQL superuser.
+- `PGDOG_PASSWORD` — Password used by the `pgdog` user in `users.toml`.
+
+### Optional
+
+- `POSTGRES_HOST` — Hostname or IP of the PostgreSQL server. Defaults to `db`.
+- `POSTGRES_USER` — PostgreSQL admin user. Defaults to `postgres`.
+- `PGDOG_USER` — Name of the PgDog user in `users.toml`. Defaults to `pgdog`.
+- `PGDOG_DATABASE` — PgDog database cluster the `pgdog` user connects to. Defaults to `pgdog`; this database must exist in PostgreSQL.
+
+### Runtime / volume permissions
+
+- `USER_ID` — User ID the sidecar and PgDog run as (defaults to `1000`).
+- `GROUP_ID` — Group ID the sidecar and PgDog run as (defaults to `1000`).
+- `TZ` — Timezone for the PostgreSQL container. Defaults to `UTC`.
+- `POLL_INTERVAL_SECONDS` — Seconds between automatic config regeneration checks. Defaults to `300` (5 minutes).
 
 ```yaml
 environment:
+  POSTGRES_HOST: db
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+  PGDOG_USER: ${PGDOG_USER:-pgdog}
+  PGDOG_DATABASE: ${PGDOG_DATABASE:-pgdog}
 ```
 
-# 🧩 Example Docker Compose Setup
-Below is an example stack consisting of:
+### Quick start
+
+1. Copy `.env.example` to `.env` and fill in the passwords.
+2. Make sure `./pgdog` is owned by the same UID/GID you set in `USER_ID`/`GROUP_ID` (default `1000:1000`) so the sidecar can write the generated TOML files.
+3. Run `docker compose up -d`.
+
+## 🧩 Example Docker Compose Setup
+
+A complete, ready-to-run stack is in `docker-compose.yml` in the project root:
 - PostgreSQL with logging enabled
 - PgDog
-- pgdog-dynamic-config sidecar
+- `pgdog-dynamic-config` sidecar
+
+The key points for the sidecar are:
+- It shares the `./pgdog` volume with PgDog.
+- It waits for PostgreSQL to be healthy.
+- It joins PgDog's PID namespace (`pid: "service:pgdog"`) so `pkill -HUP pgdog` can trigger a configuration reload.
+- Both PgDog and the sidecar run under the same `USER_ID`/`GROUP_ID` so the volume is writable and signal permissions work.
 
 ```yaml
 services:
   db:
     container_name: db
-    image: postgres:18.2-alpine3.22 # dhi.io/postgres:18.2-debian13
-    user: ${USER_ID}:${GROUP_ID}
+    image: postgres:18.4-alpine3.22
     volumes:
-      - ./data:/var/lib/postgresql/data
-      - ./logs:/var/lib/postgresql/data/log
+      - ./data:/var/lib/postgresql
+      - ./logs:/var/lib/postgresql/logs
     ports:
-    - "5432:5432"
+      - "5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      TZ: ${TZ}
+      TZ: ${TZ:-UTC}
     command: >
       postgres
         -c logging_collector=on
-        -c log_directory='logs'
+        -c log_directory='/var/lib/postgresql/logs'
         -c log_filename='postgresql-%Y-%m-%d_%H%M%S.log'
         -c log_min_duration_statement=500
         -c log_line_prefix='%m [%p] %q%u@%d '
     healthcheck:
-      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-  
+    restart: unless-stopped
+
   pgdog:
-    image: ghcr.io/pgdogdev/pgdog:main
+    image: ghcr.io/pgdogdev/pgdog:v0.1.50
     container_name: pgdog
+    user: ${USER_ID:-1000}:${GROUP_ID:-1000}
     ports:
       - "6432:6432"
     volumes:
-      - ./pgdog/pgdog.toml:/pgdog/pgdog.toml
-      - ./pgdog/users.toml:/pgdog/users.toml
+      - ./pgdog:/pgdog:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432"]
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 5s
+    restart: unless-stopped
 
   pgdog-dynamic-config:
     build:
-      context: ./pgdog
-      dockerfile: pgdog-dynamic-config.Dockerfile
+      context: .
+      dockerfile: pgdog/pgdog-dynamic-config.Dockerfile
+    container_name: pgdog-dynamic-config
+    user: ${USER_ID:-1000}:${GROUP_ID:-1000}
     environment:
+      POSTGRES_HOST: db
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+      PGDOG_USER: ${PGDOG_USER:-pgdog}
+      PGDOG_DATABASE: ${PGDOG_DATABASE:-pgdog}
     volumes:
       - ./pgdog:/pgdog
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      pgdog:
+        condition: service_started
+    pid: "service:pgdog"
+    restart: unless-stopped
 ```
-## 🔐 Authentication Requirements
-This setup assumes:
-- PgDog is configured with passthrough_auth
-- The postgres user has access to all databases
-- The sidecar can connect to PostgreSQL using superuser credentials
 
-# 🐶 PgDog
+## 🔐 Authentication Requirements
+
+This setup assumes:
+- PgDog is configured with `passthrough_auth`.
+- The `postgres` user has access to all databases.
+- The sidecar can connect to PostgreSQL using superuser credentials.
+- A database named after `PGDOG_DATABASE` (default `pgdog`) exists in PostgreSQL for the `pgdog` user.
+- The `PGDOG_PASSWORD` matches the PostgreSQL password for the `pgdog` user, because `passthrough_auth` forwards the client password to the backend.
+
+> **Security note:** `passthrough_auth = "enabled_plain"` sends passwords in plain text. Use this only on trusted networks, or enable TLS in PgDog and use `enabled` instead.
+
+## 🐶 PgDog
 
 For more information about PgDog, visit:
 
 https://github.com/pgdogdev/pgdog
 
-📜 License
+## 🧪 Tests
 
-This project is licensed under the AGPL v3 license. See the LICENSE file for details
+Integration tests use a test-specific Docker Compose (`tests/docker-compose.test.yml`) based on [PgDog's upstream compose pattern](https://github.com/pgdogdev/pgdog/blob/main/docker-compose.yml):
+
+- `postgres:18` (latest 18.x)
+- `ghcr.io/pgdogdev/pgdog:main` (latest, to catch breaking changes)
+- `pgdog-dynamic-config` sidecar (built from `./pgdog`)
+
+The tests verify:
+
+- All services start and become healthy.
+- The **autonomous background loop** (`entrypoint.sh`) generates the initial config on its own — not via manual script invocation. The test sidecar runs with `POLL_INTERVAL_SECONDS=5` for fast cycles.
+- `pgdog.toml` and `users.toml` are generated with correct content for multiple pre-existing databases.
+- No passwords are leaked in container logs.
+- PgDog accepts connections for `postgres`, `pgdog`, and additional databases.
+- The autonomous loop detects a new database and user created at runtime and regenerates the config + reloads PgDog via SIGHUP, without any manual trigger.
+- New database is accessible through PgDog immediately after the autonomous update.
+- Idempotency — manually re-running the script with no changes reports "No changes".
+
+### Running tests
+
+```sh
+./tests/integration-test.sh
+```
+
+The script starts the test stack (on ports `5433`/`6433` to avoid conflicts with production), runs all checks, and tears everything down on exit. No manual setup is required.
+
+### Prerequisites
+
+- Docker and Docker Compose installed.
+- Ports `5433` and `6433` available on the host.
+- `./pgdog` directory writable by UID `1000`.
+
+## 📜 License
+
+This project is licensed under the AGPL v3 license. See the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes.

@@ -1,6 +1,7 @@
 pgdog/*.toml
 pgdog/*.tmp
 pgdog/*.log
-pgdog/.generate-config.lock
 data/
 logs/
+tests/
+.git/

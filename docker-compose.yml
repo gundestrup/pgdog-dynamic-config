@@ -1,0 +1,74 @@
+services:
+  db:
+    container_name: db
+    image: postgres:18.4-alpine3.22
+    volumes:
+      - ./data:/var/lib/postgresql
+      - ./logs:/var/lib/postgresql/logs
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ:-UTC}
+    command: >
+      postgres
+        -c logging_collector=on
+        -c log_directory='/var/lib/postgresql/logs'
+        -c log_filename='postgresql-%Y-%m-%d_%H%M%S.log'
+        -c log_min_duration_statement=500
+        -c log_line_prefix='%m [%p] %q%u@%d '
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  pgdog:
+    image: ghcr.io/pgdogdev/pgdog:v0.1.50
+    container_name: pgdog
+    user: ${USER_ID:-1000}:${GROUP_ID:-1000}
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./pgdog:/pgdog:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  pgdog-dynamic-config:
+    build:
+      context: .
+      dockerfile: pgdog/pgdog-dynamic-config.Dockerfile
+    container_name: pgdog-dynamic-config
+    user: ${USER_ID:-1000}:${GROUP_ID:-1000}
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDOG_PASSWORD: ${PGDOG_PASSWORD}
+      PGDOG_USER: ${PGDOG_USER:-pgdog}
+      PGDOG_DATABASE: ${PGDOG_DATABASE:-pgdog}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-300}
+    volumes:
+      - ./pgdog:/pgdog
+    depends_on:
+      db:
+        condition: service_healthy
+      pgdog:
+        condition: service_started
+    pid: "service:pgdog"
+    restart: unless-stopped

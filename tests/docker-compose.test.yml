@@ -1,0 +1,68 @@
+#
+# Test Docker Compose — based on PgDog's upstream docker-compose.yml pattern.
+#
+# Uses:
+#   - postgres:18 (latest 18.x, matching upstream)
+#   - ghcr.io/pgdogdev/pgdog:main (latest, to catch breaking changes)
+#   - pgdog-dynamic-config sidecar (built from ./pgdog)
+#
+# This file is used by tests/integration-test.sh.
+#
+services:
+  db:
+    container_name: db-test
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: test-pg-pass-123
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  pgdog:
+    image: ghcr.io/pgdogdev/pgdog:main
+    container_name: pgdog-test
+    user: "1000:1000"
+    ports:
+      - "6433:6432"
+    volumes:
+      - ../pgdog:/pgdog:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  pgdog-dynamic-config:
+    build:
+      context: ..
+      dockerfile: pgdog/pgdog-dynamic-config.Dockerfile
+    container_name: pgdog-dynamic-config-test
+    environment:
+      POSTGRES_HOST: db-test
+      POSTGRES_PASSWORD: test-pg-pass-123
+      PGDOG_PASSWORD: test-pgdog-pass-123
+      PGDOG_USER: pgdog
+      PGDOG_DATABASE: pgdog
+      POLL_INTERVAL_SECONDS: 5
+    volumes:
+      - ../pgdog:/pgdog
+    depends_on:
+      db:
+        condition: service_healthy
+      pgdog:
+        condition: service_started
+    pid: "service:pgdog"
+    restart: unless-stopped
