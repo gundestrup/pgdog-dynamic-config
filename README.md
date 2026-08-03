@@ -4,6 +4,9 @@
 ![Shell](https://img.shields.io/badge/shell-bash-green)
 ![PgDog](https://img.shields.io/badge/Made_for-PgDog-blue)
 ![Status](https://img.shields.io/badge/status-active-success)
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gundestrup/pgdog-dynamic-config)
+[![CI](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml/badge.svg)](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml)
+[![Dockerfile](https://img.shields.io/badge/Docker-Dockerfile-2496ED?logo=docker)](pgdog/pgdog-dynamic-config.Dockerfile)
 
 A lightweight sidecar container for PgDog that dynamically discovers PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on environment variables.
 
