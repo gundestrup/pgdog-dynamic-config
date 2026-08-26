@@ -31,7 +31,7 @@ jobs:
           globs: |
             README.md
             CHANGELOG.md
-            AI_INSTRUCTIONS.md
+            AGENTS.md
 
   integration-tests:
     name: Integration Tests

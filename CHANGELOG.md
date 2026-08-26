@@ -2,6 +2,12 @@
 
 All notable changes to `pgdog-dynamic-config` are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **`AI_INSTRUCTIONS.md` → `AGENTS.md`** — renamed the AI instruction file to `AGENTS.md` following the [agents.md](https://agents.md) open convention. `AGENTS.md` is now the single source of truth for all coding agents working on this project. Updated all references in `.github/workflows/ci.yml` and within the file itself.
+
 ## [0.2.1] - 2026-08-01
 
 Linting and cleanup pass. No functional changes — the sidecar behavior is

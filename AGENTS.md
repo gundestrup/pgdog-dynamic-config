@@ -1,8 +1,8 @@
-# AI_INSTRUCTIONS.md
+# AGENTS.md — pgdog-dynamic-config
 
-> **Canonical instruction file for AI coding assistants working on this repository.**
-> This file is the single source of truth for project conventions, architecture,
-> and testing requirements. AI tools (Claude, Windsurf/Devin, Cursor, etc.)
+> **Single source of truth for all coding agents working on this project.**
+> This file is the canonical instruction file for AI coding assistants working
+> on this repository. AI tools (Claude, Windsurf/Devin, Cursor, etc.)
 > should read this file first and follow its guidance throughout any session.
 
 ---
@@ -31,7 +31,7 @@ when the configuration changes.
 ├── README.md                       # User-facing documentation
 ├── CHANGELOG.md                    # Keep a Changelog format
 ├── LICENSE                         # AGPL v3
-├── AI_INSTRUCTIONS.md              # THIS FILE — read first
+├── AGENTS.md                       # THIS FILE — read first
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                  # GitHub Actions: ShellCheck + markdownlint + integration tests
@@ -161,7 +161,7 @@ The workflow in `.github/workflows/ci.yml` runs on every push and pull
 request to `main`/`master` with three parallel jobs:
 
 - **ShellCheck** — lints all shell scripts for POSIX compliance and common errors.
-- **markdownlint** — lints `README.md`, `CHANGELOG.md`, and `AI_INSTRUCTIONS.md`.
+- **markdownlint** — lints `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
 - **Integration tests** — runs the full `./tests/integration-test.sh` suite
   on an Ubuntu runner with Docker Compose. Dumps container logs on failure.
 
@@ -209,7 +209,7 @@ If creating a `CLAUDE.md` file for this project, it should contain:
 ```markdown
 # CLAUDE.md
 
-Read AI_INSTRUCTIONS.md first — it is the canonical instruction file for
+Read AGENTS.md first — it is the canonical instruction file for
 this repository. Follow its coding conventions, testing rules, and
 architecture notes for all changes.
 
@@ -230,17 +230,17 @@ Workflow files go in `.windsurf/workflows/` or `.devin/workflows/` as
 ---
 description: Run integration tests for pgdog-dynamic-config
 ---
-1. Read AI_INSTRUCTIONS.md for project context and testing rules.
+1. Read AGENTS.md for project context and testing rules.
 2. Run `./tests/integration-test.sh` from the project root.
 3. All 33 assertions must pass with 0 failures.
-4. If tests fail, check the "Common Pitfalls" section of AI_INSTRUCTIONS.md.
+4. If tests fail, check the "Common Pitfalls" section of AGENTS.md.
 ```
 
 ```markdown
 ---
 description: Add a new environment variable to the sidecar
 ---
-1. Read AI_INSTRUCTIONS.md for architecture and conventions.
+1. Read AGENTS.md for architecture and conventions.
 2. Add the variable to `pgdog/generate-config.sh` with a default:
    `VAR_NAME="${VAR_NAME:-default}"`
 3. Add to `.env.example` with a comment.
@@ -253,7 +253,7 @@ description: Add a new environment variable to the sidecar
 
 ### General rules for all AI tools
 
-- **Read `AI_INSTRUCTIONS.md` before making any changes.**
+- **Read `AGENTS.md` before making any changes.**
 - **Run `./tests/integration-test.sh` after any code change.**
 - **Update `CHANGELOG.md` for every change** (Keep a Changelog format).
 - **Keep the sidecar minimal** — no extra packages beyond
@@ -263,17 +263,11 @@ description: Add a new environment variable to the sidecar
 
 ### AGENTS.md (Devin native format)
 
-If creating an `AGENTS.md` file for Devin, it should mirror the key
-points from `AI_INSTRUCTIONS.md`:
+This file **is** the `AGENTS.md` for Devin. The key rules:
 
-```markdown
-# AGENTS.md
-
-Read AI_INSTRUCTIONS.md for full project context. Key rules:
 - POSIX sh only (no bashisms). Scripts run on Alpine Linux.
 - Test the autonomous polling loop, not just manual script invocation.
 - Never log passwords. Pin Docker image versions in production.
 - Run ./tests/integration-test.sh to verify all changes.
 - Update CHANGELOG.md for every change.
 - Keep the sidecar minimal: postgresql-client + tini + base Alpine only.
-```
