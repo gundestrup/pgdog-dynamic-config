@@ -5,7 +5,7 @@
 # Uses a test-specific docker-compose (tests/docker-compose.test.yml) based on
 # PgDog's upstream compose pattern:
 #   - postgres:18 (latest 18.x)
-#   - ghcr.io/pgdogdev/pgdog:main (latest, to catch breaking changes)
+#   - the pinned version in ../versions.env by default (override with PGDOG_IMAGE)
 #   - pgdog-dynamic-config sidecar (built from ./pgdog)
 #
 # Verifies that:
@@ -23,6 +23,7 @@
 #
 # Usage:
 #   ./tests/integration-test.sh
+#   PGDOG_IMAGE=ghcr.io/pgdogdev/pgdog:main ./tests/integration-test.sh
 #
 # Prerequisites:
 #   - Docker and Docker Compose installed.
@@ -36,6 +37,12 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PGDOG_VERSION="$(sed -n 's/^PGDOG_VERSION=//p' "$PROJECT_DIR/versions.env")"
+if [ -z "$PGDOG_VERSION" ]; then
+  echo "ERROR: PGDOG_VERSION is missing from $PROJECT_DIR/versions.env" >&2
+  exit 1
+fi
+export PGDOG_VERSION
 TEST_COMPOSE="$SCRIPT_DIR/docker-compose.test.yml"
 TIMEOUT=120
 INTERVAL=5
@@ -157,7 +164,7 @@ pass "Test environment prepared"
 
 # --- Start stack ---
 
-log "Starting Docker Compose stack (postgres:18 + pgdog:main)"
+log "Starting Docker Compose stack (postgres:18 + ${PGDOG_IMAGE:-ghcr.io/pgdogdev/pgdog:$PGDOG_VERSION})"
 
 if dc up -d --build 2>&1; then
   pass "Docker Compose stack started"

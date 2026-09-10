@@ -3,7 +3,7 @@
 #
 # Uses:
 #   - postgres:18 (latest 18.x, matching upstream)
-#   - ghcr.io/pgdogdev/pgdog:main (latest, to catch breaking changes)
+#   - the version in ../versions.env by default (override with PGDOG_IMAGE)
 #   - pgdog-dynamic-config sidecar (built from ./pgdog)
 #
 # This file is used by tests/integration-test.sh.
@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
 
   pgdog:
-    image: ghcr.io/pgdogdev/pgdog:main
+    image: ${PGDOG_IMAGE:-ghcr.io/pgdogdev/pgdog:${PGDOG_VERSION:?PGDOG_VERSION must be set; source ../versions.env}}
     container_name: pgdog-test
     user: "1000:1000"
     ports:

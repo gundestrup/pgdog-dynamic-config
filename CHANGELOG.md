@@ -4,8 +4,19 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-10
+
+### Added
+
+- Added README badges for DeepWiki documentation, GitHub Actions CI, the sidecar Dockerfile, and CodeFactor analysis.
+- Added Semgrep configuration and a Semgrep security scan to the GitHub Actions workflow.
+- Added shared PgDog version and release-check scripts in `versions.env` and `scripts/`.
+
 ### Changed
 
+- Pinned GitHub Actions dependencies to full commit SHAs in `.github/workflows/ci.yml` to prevent mutable action references.
+- Centralized the pinned PgDog version in `versions.env`, updated Compose and tests to use it, and added CI coverage for both the pinned release and `main`.
+- Added CI validation that checks the pinned version against the latest upstream PgDog release.
 - **`AI_INSTRUCTIONS.md` → `AGENTS.md`** — renamed the AI instruction file to `AGENTS.md` following the [agents.md](https://agents.md) open convention. `AGENTS.md` is now the single source of truth for all coding agents working on this project. Updated all references in `.github/workflows/ci.yml` and within the file itself.
 
 ## [0.2.1] - 2026-08-01

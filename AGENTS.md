@@ -24,7 +24,8 @@ when the configuration changes.
 
 ```text
 .
-├── docker-compose.yml              # Production compose stack (db + pgdog + sidecar)
+├── docker-compose.yml              # Production compose stack (versioned PgDog + sidecar)
+├── versions.env                    # Single source of truth for pinned PgDog version
 ├── .env.example                    # Template for environment variables
 ├── .dockerignore                   # Root-level Docker build context exclusions
 ├── .gitignore
@@ -35,6 +36,9 @@ when the configuration changes.
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                  # GitHub Actions: ShellCheck + markdownlint + integration tests
+├── scripts/
+│   ├── compose.sh                  # Loads shared version and environment before Docker Compose
+│   └── update-pgdog-version.sh     # Checks or updates the latest released PgDog version
 ├── pgdog/
 │   ├── generate-config.sh          # Core: discovers DBs, generates TOML, reloads PgDog
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
@@ -43,7 +47,7 @@ when the configuration changes.
 │   └── .gitkeep
 └── tests/
     ├── integration-test.sh         # Integration test suite (33 assertions)
-    ├── docker-compose.test.yml     # Test compose (postgres:18, pgdog:main, ports 5433/6433)
+    ├── docker-compose.test.yml     # Test compose (postgres:18, pinned PgDog/main, ports 5433/6433)
     └── setup.sql                   # Pre-creates pgdog, appdb databases and users for tests
 ```
 
@@ -125,7 +129,8 @@ when the configuration changes.
 
 This spins up a full Docker Compose stack on ports **5433/6433** (to
 avoid conflicts with production), runs 33 assertions, and tears down on
-exit. No manual setup required.
+exit. The pinned PgDog image comes from `versions.env`; set `PGDOG_IMAGE`
+to test another image. No manual setup required.
 
 ### What the tests cover
 
@@ -158,14 +163,17 @@ calling the script directly.
 ### CI (GitHub Actions)
 
 The workflow in `.github/workflows/ci.yml` runs on every push and pull
-request to `main`/`master` with three parallel jobs:
+request to `main`/`master` with five job definitions:
 
 - **ShellCheck** — lints all shell scripts for POSIX compliance and common errors.
 - **markdownlint** — lints `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
 - **Integration tests** — runs the full `./tests/integration-test.sh` suite
-  on an Ubuntu runner with Docker Compose. Dumps container logs on failure.
+  against both the pinned PgDog image from `versions.env` and the latest
+  `main` image on Ubuntu runners with Docker Compose. Dumps container logs on failure.
+- **PgDog version alignment** — checks `versions.env` against the latest
+  upstream release using `scripts/update-pgdog-version.sh`.
 
-All three jobs must pass for a PR to be mergeable.
+All jobs, including both integration-test matrix runs and the Semgrep scan, must pass for a PR to be mergeable.
 
 ---
 

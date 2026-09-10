@@ -11,22 +11,22 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install ShellCheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Run ShellCheck
-        run: shellcheck pgdog/generate-config.sh pgdog/entrypoint.sh tests/integration-test.sh
+        run: shellcheck scripts/compose.sh scripts/update-pgdog-version.sh pgdog/generate-config.sh pgdog/entrypoint.sh tests/integration-test.sh
 
   markdownlint:
     name: Markdown Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Run markdownlint
-        uses: DavidAnson/markdownlint-cli2-action@v19
+        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265
         with:
           globs: |
             README.md
@@ -34,11 +34,23 @@ jobs:
             AGENTS.md
 
   integration-tests:
-    name: Integration Tests
+    name: Integration Tests (${{ matrix.pgdog-target }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      matrix:
+        pgdog-target: [pinned, main]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Select PgDog image
+        run: |
+          if [ "${{ matrix.pgdog-target }}" = "pinned" ]; then
+            version="$(sed -n 's/^PGDOG_VERSION=//p' versions.env)"
+          else
+            version="main"
+          fi
+          echo "PGDOG_IMAGE=ghcr.io/pgdogdev/pgdog:$version" >> "$GITHUB_ENV"
 
       - name: Set up Docker Compose
         run: docker compose version
@@ -54,3 +66,26 @@ jobs:
         run: |
           docker compose -f tests/docker-compose.test.yml logs --tail=200 2>/dev/null || true
           docker ps -a 2>/dev/null || true
+
+  pgdog-version:
+    name: PgDog version alignment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Check latest PgDog release
+        run: ./scripts/update-pgdog-version.sh --check
+
+  semgrep:
+    name: Semgrep security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install Semgrep
+        run: pip3 install semgrep
+
+      - name: Run Semgrep security scan
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: semgrep ci

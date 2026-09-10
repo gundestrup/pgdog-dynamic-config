@@ -1,0 +1,41 @@
+# Semgrep configuration for pgdog-dynamic-config
+# https://semgrep.dev/docs/
+#
+# Run: semgrep scan --config .semgrep.yml --error pgdog/
+
+rules:
+  # Detect use of eval in shell scripts — dangerous dynamic execution.
+  - id: shell-eval-usage
+    languages: [sh, bash]
+    severity: ERROR
+    message: "Use of eval in shell script is dangerous — avoid dynamic execution"
+    pattern: eval $VAR
+    metadata:
+      owasp: "A03:2021 - Injection"
+      cwe: "CWE-95: Code Injection"
+
+  # Detect sourcing of variable file paths — potential file inclusion.
+  - id: shell-source-variable
+    languages: [sh, bash]
+    severity: WARNING
+    message: "Sourcing file from variable — potential file inclusion"
+    pattern-either:
+      - pattern: source $VAR
+      - pattern: . $VAR
+    metadata:
+      cwe: "CWE-98: File Inclusion"
+
+  # Detect unquoted variable in dangerous command contexts.
+  - id: shell-unquoted-variable-dangerous
+    languages: [sh, bash]
+    severity: ERROR
+    message: "Unquoted variable in command — vulnerable to word splitting and globbing"
+    pattern-either:
+      - pattern: rm $VAR
+      - pattern: cp $VAR
+      - pattern: mv $VAR
+      - pattern: cat $VAR
+      - pattern: chmod $VAR
+      - pattern: chown $VAR
+    metadata:
+      cwe: "CWE-78: OS Command Injection"

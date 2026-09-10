@@ -7,6 +7,7 @@
 [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gundestrup/pgdog-dynamic-config)
 [![CI](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml/badge.svg)](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml)
 [![Dockerfile](https://img.shields.io/badge/Docker-Dockerfile-2496ED?logo=docker)](pgdog/pgdog-dynamic-config.Dockerfile)
+[![CodeFactor](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config/badge)](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config)
 
 A lightweight sidecar container for PgDog that dynamically discovers PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on environment variables.
 
@@ -93,7 +94,14 @@ environment:
 
 1. Copy `.env.example` to `.env` and fill in the passwords.
 2. Make sure `./pgdog` is owned by the same UID/GID you set in `USER_ID`/`GROUP_ID` (default `1000:1000`) so the sidecar can write the generated TOML files.
-3. Run `docker compose up -d`.
+3. Run `./scripts/compose.sh up -d` so the shared PgDog version is loaded from `versions.env`.
+
+The pinned PgDog version is maintained in `versions.env`. Before a release, check and update it with:
+
+```sh
+./scripts/update-pgdog-version.sh --check
+./scripts/update-pgdog-version.sh
+```
 
 ## 🧩 Example Docker Compose Setup
 
@@ -145,7 +153,7 @@ services:
     restart: unless-stopped
 
   pgdog:
-    image: ghcr.io/pgdogdev/pgdog:v0.1.50
+    image: ghcr.io/pgdogdev/pgdog:${PGDOG_VERSION}
     container_name: pgdog
     user: ${USER_ID:-1000}:${GROUP_ID:-1000}
     ports:
@@ -209,7 +217,8 @@ For more information about PgDog, visit:
 Integration tests use a test-specific Docker Compose (`tests/docker-compose.test.yml`) based on [PgDog's upstream compose pattern](https://github.com/pgdogdev/pgdog/blob/main/docker-compose.yml):
 
 - `postgres:18` (latest 18.x)
-- `ghcr.io/pgdogdev/pgdog:main` (latest, to catch breaking changes)
+- `ghcr.io/pgdogdev/pgdog:${PGDOG_VERSION}` by default, loaded from `versions.env`
+- `ghcr.io/pgdogdev/pgdog:main` in the CI matrix (latest development version, to catch breaking changes)
 - `pgdog-dynamic-config` sidecar (built from `./pgdog`)
 
 The tests verify:
