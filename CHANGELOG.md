@@ -4,6 +4,10 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Passed the GitHub Actions token to the PgDog release check so CI can query the public GitHub API through the GitHub CLI.
+
 ## [0.2.2] - 2026-09-10
 
 ### Added
