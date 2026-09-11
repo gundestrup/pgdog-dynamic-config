@@ -56,7 +56,7 @@ jobs:
         run: docker compose version
 
       - name: Ensure pgdog dir is writable
-        run: mkdir -p pgdog && chmod 777 pgdog
+        run: mkdir -p pgdog && sudo chown 1000:1000 pgdog
 
       - name: Run integration tests
         run: ./tests/integration-test.sh
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install Semgrep
-        run: pip3 install semgrep
+        run: "pip3 install --only-binary :all: 'semgrep==1.176.1'"
 
       - name: Run Semgrep security scan
         env:

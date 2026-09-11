@@ -8,6 +8,7 @@
 [![CI](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml/badge.svg)](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml)
 [![Dockerfile](https://img.shields.io/badge/Docker-Dockerfile-2496ED?logo=docker)](pgdog/pgdog-dynamic-config.Dockerfile)
 [![CodeFactor](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config/badge)](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gundestrup_pgdog-dynamic-config&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gundestrup_pgdog-dynamic-config)
 
 A lightweight sidecar container for PgDog that dynamically discovers PostgreSQL databases and regenerates `pgdog.toml` and `users.toml` based on environment variables.
 

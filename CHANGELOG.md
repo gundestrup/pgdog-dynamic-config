@@ -4,9 +4,15 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added a SonarCloud quality gate badge to `README.md`.
+
 ### Fixed
 
 - Passed the GitHub Actions token to the PgDog release check so CI can query the public GitHub API through the GitHub CLI.
+- Replaced `chmod 777` on the `pgdog` directory in CI with `sudo chown 1000:1000` to avoid granting world-writable permissions (SonarCloud `githubactions:S2612`).
+- Pinned the Semgrep install in CI to `semgrep==1.176.1` with `--only-binary :all:` so dependency versions are locked and no setup scripts execute during installation (SonarCloud `githubactions:S8541`, `githubactions:S8544`).
 
 ## [0.2.2] - 2026-09-10
 
