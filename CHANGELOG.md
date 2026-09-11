@@ -2,7 +2,7 @@
 
 All notable changes to `pgdog-dynamic-config` are documented in this file.
 
-## [Unreleased]
+## [0.2.3] - 2026-09-11
 
 ### Added
 
