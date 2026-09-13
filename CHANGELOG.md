@@ -2,6 +2,12 @@
 
 All notable changes to `pgdog-dynamic-config` are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Added an explicit `permissions: contents: read` block to the CI workflow so the `GITHUB_TOKEN` is limited to read-only access (CodeQL `actions/missing-workflow-permissions`, 5 alerts).
+
 ## [0.2.3] - 2026-09-11
 
 ### Added
