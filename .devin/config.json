@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(semgrep)",
+      "Exec(shellcheck)",
+      "Exec(docker)",
+      "Exec(./tests/integration-test.sh)",
+      "Exec(./scripts/compose.sh)",
+      "Exec(./scripts/update-pgdog-version.sh)",
+      "Exec(sh)",
+      "Exec(bash)",
+      "Exec(npx)"
+    ]
+  }
+}
