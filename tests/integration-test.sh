@@ -67,6 +67,10 @@ dc() {
 PASS=0
 FAIL=0
 
+COVERAGE_DIR="$PROJECT_DIR/coverage"
+TEST_RESULTS_DIR="$PROJECT_DIR/test-results"
+RESULTS_FILE="$(mktemp "${TMPDIR:-/tmp}/pgdog-test-results.XXXXXX")"
+
 # --- Helpers ---
 
 log() {
@@ -75,12 +79,39 @@ log() {
 
 pass() {
   printf '  \033[32m✓\033[0m %s\n' "$1"
+  printf 'PASS\t%s\n' "$1" >> "$RESULTS_FILE"
   PASS=$((PASS + 1))
 }
 
 fail() {
   printf '  \033[31m✗\033[0m %s\n' "$1"
+  printf 'FAIL\t%s\n' "$1" >> "$RESULTS_FILE"
   FAIL=$((FAIL + 1))
+}
+
+# shellcheck disable=SC2329
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&apos;/g"
+}
+
+# shellcheck disable=SC2329
+write_junit() {
+  mkdir -p "$TEST_RESULTS_DIR"
+  _tests=$(wc -l < "$RESULTS_FILE" | tr -d ' ')
+  _fails=$(grep -c '^FAIL' "$RESULTS_FILE" || true)
+  {
+    printf '<?xml version="1.0" encoding="UTF-8"?>\n'
+    printf '<testsuite name="pgdog-integration-tests" tests="%s" failures="%s">\n' "$_tests" "$_fails"
+    while IFS="$(printf '\t')" read -r _status _name; do
+      _esc=$(xml_escape "$_name")
+      if [ "$_status" = "PASS" ]; then
+        printf '  <testcase classname="integration-test" name="%s"/>\n' "$_esc"
+      else
+        printf '  <testcase classname="integration-test" name="%s"><failure message="assertion failed"/></testcase>\n' "$_esc"
+      fi
+    done < "$RESULTS_FILE"
+    printf '</testsuite>\n'
+  } > "$TEST_RESULTS_DIR/junit.xml"
 }
 
 assert_contains() {
@@ -149,7 +180,7 @@ wait_for_pattern() {
 log "Setup"
 
 # Clean up any previous test artifacts
-rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"
+rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$COVERAGE_DIR" "$TEST_RESULTS_DIR"
 rm -f "$PROJECT_DIR/pgdog/pgdog.toml" "$PROJECT_DIR/pgdog/users.toml"
 rm -f "$PROJECT_DIR/pgdog/pgdog.toml.tmp" "$PROJECT_DIR/pgdog/users.toml.tmp"
 
@@ -181,6 +212,7 @@ fi
 # shellcheck disable=SC2317,SC2329
 cleanup() {
   log "Tearing down"
+  write_junit
   dc exec -T pgdog-dynamic-config rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp 2>/dev/null || true
   dc down -v --remove-orphans 2>/dev/null || true
   rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"
@@ -391,6 +423,40 @@ if [ "$_idempotency_ok" = "1" ]; then
   pass "Script correctly detects no changes on re-run"
 else
   fail "Script did not report 'No changes' on re-run (output: $SIDECAR_OUTPUT)"
+fi
+
+# --- Coverage collection (kcov, best-effort) ---
+#
+# Runs generate-config.sh under kcov inside a throwaway container on the
+# test network (the postgres:18 image already pulled by the stack has apt;
+# kcov is not packaged for Alpine). Produces Cobertura XML in ./coverage
+# for Codecov upload in CI. Failure here is non-fatal.
+
+log "Collecting coverage report (kcov)"
+
+_cobertura=""
+_net=$(docker inspect "$SIDECAR_CONTAINER" --format '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+if [ -n "$_net" ]; then
+  docker stop "$SIDECAR_CONTAINER" >/dev/null 2>&1 || true
+  rm -rf "$COVERAGE_DIR"
+  mkdir -p "$COVERAGE_DIR"
+  docker run --rm --cap-add SYS_PTRACE --security-opt seccomp=unconfined \
+    --network "$_net" \
+    -v "$PROJECT_DIR/pgdog:/pgdog" -v "$COVERAGE_DIR:/coverage" \
+    -e POSTGRES_HOST="$DB_CONTAINER" \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD="$TEST_POSTGRES_PASSWORD" \
+    -e PGDOG_PASSWORD="$TEST_PGDOG_PASSWORD" \
+    -e PGDOG_USER=pgdog \
+    -e PGDOG_DATABASE=pgdog \
+    postgres:18 sh -c 'apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq kcov >/dev/null 2>&1 && kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh; rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp' >/dev/null 2>&1 || true
+  _cobertura=$(find "$COVERAGE_DIR" -name cobertura.xml -print -quit 2>/dev/null)
+fi
+
+if [ -n "$_cobertura" ] && [ -f "$_cobertura" ]; then
+  printf '  \033[32m✓\033[0m Coverage report collected: %s\n' "$_cobertura"
+else
+  printf '  \033[33m!\033[0m Coverage collection skipped or failed (non-fatal)\n'
 fi
 
 # --- Summary ---

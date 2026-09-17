@@ -4,3 +4,5 @@ pgdog/*.log
 pgdog/.generate-config.lock
 data/
 logs/
+coverage/
+test-results/

@@ -64,6 +64,24 @@ jobs:
       - name: Run integration tests
         run: ./tests/integration-test.sh
 
+      - name: Upload coverage to Codecov
+        if: always() && matrix.pgdog-target == 'pinned'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage
+          flags: integration-tests
+          fail_ci_if_error: false
+          handle_no_reports_found: true
+
+      - name: Upload test results to Codecov
+        if: always() && matrix.pgdog-target == 'pinned'
+        run: |
+          pip3 install --only-binary :all: 'codecov-cli==11.3.1'
+          codecovcli do-upload --report-type test_results --file test-results/junit.xml --token "$CODECOV_TOKEN" || echo "Codecov test-results upload failed (non-fatal)"
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Dump logs on failure
         if: failure()
         run: |

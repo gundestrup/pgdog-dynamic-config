@@ -8,6 +8,7 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 - `.devin/config.json` with Devin CLI project permissions allow-listing the quality-gate commands (Semgrep, ShellCheck, Docker, test/helper scripts)
 - Codecov coverage badge in `README.md`.
+- Codecov integration: the integration test now produces a Cobertura coverage report via `kcov` (run in a throwaway `postgres:18` container on the test network, since `kcov` is not packaged for Alpine) written to `coverage/`, and a JUnit XML report of all assertions in `test-results/junit.xml`. CI uploads both to Codecov on the pinned matrix leg — coverage via `codecov/codecov-action` (pinned SHA) and test results via `codecov-cli`. Added `codecov.yml` with status thresholds.
 
 ### Changed
 
