@@ -1,8 +1,6 @@
 # pgdog-dynamic-config
 
 [![codecov](https://codecov.io/gh/gundestrup/pgdog-dynamic-config/branch/main/graph/badge.svg)](https://codecov.io/gh/gundestrup/pgdog-dynamic-config)
-
-
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![Shell](https://img.shields.io/badge/shell-bash-green)
 ![PgDog](https://img.shields.io/badge/Made_for-PgDog-blue)

@@ -181,6 +181,7 @@ fi
 # shellcheck disable=SC2317,SC2329
 cleanup() {
   log "Tearing down"
+  dc exec -T pgdog-dynamic-config rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp 2>/dev/null || true
   dc down -v --remove-orphans 2>/dev/null || true
   rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"
   rm -f "$PROJECT_DIR/pgdog/pgdog.toml" "$PROJECT_DIR/pgdog/users.toml"

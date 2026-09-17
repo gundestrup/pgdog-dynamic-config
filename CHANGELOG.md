@@ -7,10 +7,17 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 ### Added
 
 - `.devin/config.json` with Devin CLI project permissions allow-listing the quality-gate commands (Semgrep, ShellCheck, Docker, test/helper scripts)
+- Codecov coverage badge in `README.md`.
+
+### Changed
+
+- Bumped the pinned PgDog version to `v0.1.58` in `versions.env` to match the latest upstream release.
 
 ### Fixed
 
 - Added an explicit `permissions: contents: read` block to the CI workflow so the `GITHUB_TOKEN` is limited to read-only access (CodeQL `actions/missing-workflow-permissions`, 5 alerts).
+- Fixed `README.md` markdownlint errors introduced by the Codecov badge (double blank line, missing trailing newline).
+- Fixed integration test teardown failing on CI runners with "Permission denied": generated TOML files owned by UID 1000 are now removed inside the sidecar container before `docker compose down`.
 
 ## [0.2.3] - 2026-09-11
 
