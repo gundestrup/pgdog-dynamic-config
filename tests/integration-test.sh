@@ -89,12 +89,12 @@ fail() {
   FAIL=$((FAIL + 1))
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 xml_escape() {
   printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&apos;/g"
 }
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 write_junit() {
   mkdir -p "$TEST_RESULTS_DIR"
   _tests=$(wc -l < "$RESULTS_FILE" | tr -d ' ')
