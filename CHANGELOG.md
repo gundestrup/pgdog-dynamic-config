@@ -12,6 +12,7 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 ### Changed
 
 - Bumped the pinned PgDog version to `v0.1.58` in `versions.env` to match the latest upstream release.
+- Updated GitHub Actions to Node 24 runtimes: `actions/checkout` to v7.0.1 and `DavidAnson/markdownlint-cli2-action` to v24.2.0 (still pinned to full commit SHAs).
 
 ### Fixed
 
