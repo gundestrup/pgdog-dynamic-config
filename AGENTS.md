@@ -33,6 +33,8 @@ when the configuration changes.
 ├── CHANGELOG.md                    # Keep a Changelog format
 ├── LICENSE                         # AGPL v3
 ├── AGENTS.md                       # THIS FILE — read first
+├── .devin/
+│   └── config.json                   # Devin CLI project permissions (allow-listed commands)
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                  # GitHub Actions: ShellCheck + markdownlint + integration tests

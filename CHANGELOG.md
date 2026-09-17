@@ -4,6 +4,10 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `.devin/config.json` with Devin CLI project permissions allow-listing the quality-gate commands (Semgrep, ShellCheck, Docker, test/helper scripts)
+
 ### Fixed
 
 - Added an explicit `permissions: contents: read` block to the CI workflow so the `GITHUB_TOKEN` is limited to read-only access (CodeQL `actions/missing-workflow-permissions`, 5 alerts).
