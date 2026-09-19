@@ -7,17 +7,23 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 ### Added
 
 - `.devin/config.json` with Devin CLI project permissions allow-listing the quality-gate commands (Semgrep, ShellCheck, Docker, test/helper scripts)
+- `.sonarcloud.properties` classifying `tests/` as test code and excluding `coverage/`, `test-results/`, `data/`, `logs/`, and generated `pgdog/` artifacts — so SonarCloud AutoScan does not count test infrastructure or generated files as production code.
+- `scripts/hooks/pre-commit` running ShellCheck on all shell scripts; enable with `git config core.hooksPath scripts/hooks`.
+- `.vscode/settings.json` is now tracked — it carries the project setting `semgrep.scan.onlyGitDirty: false` (scan the whole tree, not just dirty files).
 - Codecov coverage badge in `README.md`.
 - Codecov integration: the integration test now produces a Cobertura coverage report via `kcov` (run in a throwaway `postgres:18` container on the test network, since `kcov` is not packaged for Alpine) written to `coverage/`, and a JUnit XML report of all assertions in `test-results/junit.xml`. CI uploads both to Codecov on the pinned matrix leg — coverage via `codecov/codecov-action` (pinned SHA) and test results via `codecov-cli`. Added `codecov.yml` with status thresholds.
 
 ### Changed
 
-- Bumped the pinned PgDog version to `v0.1.58` in `versions.env` to match the latest upstream release.
+- Bumped the pinned PgDog version to `v0.1.59` in `versions.env` to match the latest upstream release.
+- Corrected the `shell-bash` badge in `README.md` to `shell-sh` — the scripts are POSIX `sh`, not Bash.
+- `versions.env` file mode changed from `600` to `644` — it is not a secret.
 - Updated GitHub Actions to Node 24 runtimes: `actions/checkout` to v7.0.1 and `DavidAnson/markdownlint-cli2-action` to v24.2.0 (still pinned to full commit SHAs).
 
 ### Fixed
 
 - Added an explicit `permissions: contents: read` block to the CI workflow so the `GITHUB_TOKEN` is limited to read-only access (CodeQL `actions/missing-workflow-permissions`, 5 alerts).
+- `AGENTS.md` repository-structure section listed removed files (`pgdog/.dockerignore`, `pgdog/.gitkeep`) and the CI job list omitted the Semgrep job — both corrected.
 - Fixed `README.md` markdownlint errors introduced by the Codecov badge (double blank line, missing trailing newline).
 - Fixed integration test teardown failing on CI runners with "Permission denied": generated TOML files owned by UID 1000 are now removed inside the sidecar container before `docker compose down`.
 

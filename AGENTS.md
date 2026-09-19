@@ -44,9 +44,7 @@ when the configuration changes.
 ├── pgdog/
 │   ├── generate-config.sh          # Core: discovers DBs, generates TOML, reloads PgDog
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
-│   ├── pgdog-dynamic-config.Dockerfile  # Sidecar image (alpine:3.22 + postgresql-client + tini)
-│   ├── .dockerignore               # Redundant — root .dockerignore is authoritative; safe to remove
-│   └── .gitkeep
+│   └── pgdog-dynamic-config.Dockerfile  # Sidecar image (alpine:3.22 + postgresql-client + tini)
 └── tests/
     ├── integration-test.sh         # Integration test suite (33 assertions)
     ├── docker-compose.test.yml     # Test compose (postgres:18, pinned PgDog/main, ports 5433/6433)
@@ -174,6 +172,8 @@ request to `main`/`master` with five job definitions:
   `main` image on Ubuntu runners with Docker Compose. Dumps container logs on failure.
 - **PgDog version alignment** — checks `versions.env` against the latest
   upstream release using `scripts/update-pgdog-version.sh`.
+- **Semgrep** — static analysis via `semgrep ci` (App policies); the local
+  `.semgrep.yml` shell rules are kept in sync by convention.
 
 All jobs, including both integration-test matrix runs and the Semgrep scan, must pass for a PR to be mergeable.
 

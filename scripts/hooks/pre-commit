@@ -1,0 +1,18 @@
+#!/bin/sh
+# Pre-commit hook for pgdog-dynamic-config.
+#
+# Enable once after cloning:
+#   git config core.hooksPath scripts/hooks
+#
+# Bypass temporarily:
+#   git commit --no-verify
+
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: ShellCheck..."
+shellcheck scripts/compose.sh scripts/update-pgdog-version.sh \
+  pgdog/generate-config.sh pgdog/entrypoint.sh tests/integration-test.sh
+
+echo "pre-commit: OK"

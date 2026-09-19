@@ -1,0 +1,3 @@
+{
+    "semgrep.scan.onlyGitDirty": false
+}
