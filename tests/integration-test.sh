@@ -213,6 +213,10 @@ fi
 cleanup() {
   log "Tearing down"
   write_junit
+  if [ "$FAIL" -gt 0 ]; then
+    log "Container logs (failure diagnostics)"
+    dc logs --tail=50 db pgdog pgdog-dynamic-config 2>/dev/null || true
+  fi
   dc exec -T pgdog-dynamic-config rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp 2>/dev/null || true
   dc down -v --remove-orphans 2>/dev/null || true
   rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"

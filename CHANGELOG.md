@@ -10,6 +10,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 - `.sonarcloud.properties` classifying `tests/` as test code and excluding `coverage/`, `test-results/`, `data/`, `logs/`, and generated `pgdog/` artifacts — so SonarCloud AutoScan does not count test infrastructure or generated files as production code.
 - `scripts/hooks/pre-commit` running ShellCheck on all shell scripts; enable with `git config core.hooksPath scripts/hooks`.
 - `.vscode/settings.json` is now tracked — it carries the project setting `semgrep.scan.onlyGitDirty: false` (scan the whole tree, not just dirty files).
+- Test failures are now annotated on PRs: a `dorny/test-reporter` step (pinned SHA, `if: always()`, `fail-on-error: false`) publishes `test-results/junit.xml` as a GitHub check for both matrix legs.
+- The integration suite dumps `docker compose logs --tail=50` for all services during teardown when any assertion failed, so local runs are as diagnosable as CI runs.
 - Codecov coverage badge in `README.md`.
 - Codecov integration: the integration test now produces a Cobertura coverage report via `kcov` (run in a throwaway `postgres:18` container on the test network, since `kcov` is not packaged for Alpine) written to `coverage/`, and a JUnit XML report of all assertions in `test-results/junit.xml`. CI uploads both to Codecov on the pinned matrix leg — coverage via `codecov/codecov-action` (pinned SHA) and test results via `codecov-cli`. Added `codecov.yml` with status thresholds.
 
