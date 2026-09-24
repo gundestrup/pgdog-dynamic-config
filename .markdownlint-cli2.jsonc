@@ -1,0 +1,21 @@
+// markdownlint-cli2 configuration — used by CLI and vscode-markdownlint.
+{
+  "config": {
+    "MD013": false,
+    "MD033": false,
+    "MD024": { "siblings_only": true }
+  },
+  "gitignore": true,
+  "globs": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "README.md",
+    ".github/**/*.md"
+  ],
+  "ignores": [
+    "**/node_modules/**",
+    "vendor/**",
+    "coverage/**",
+    "tmp/**"
+  ]
+}
