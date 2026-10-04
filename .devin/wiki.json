@@ -1,0 +1,37 @@
+{
+  "repo_notes": [
+    { "content": "Docker sidecar (POSIX sh, Alpine) that discovers PostgreSQL databases at runtime, regenerates PgDog's pgdog.toml/users.toml, and reloads PgDog via SIGHUP on change. No compiled code, no framework — shell + Docker only." },
+    { "content": "Loop: entrypoint.sh polls generate-config.sh every POLL_INTERVAL_SECONDS (default 300). generate-config.sh lists non-template DBs via psql -t -A, writes .tmp files, cmp -s-compares, atomically mv's into place only when changed, then pkill -HUP pgdog." },
+    { "content": "SIGHUP works because sidecar and PgDog share a PID namespace (pid: 'service:pgdog') and run as the same UID (default 1000) — mismatched UID makes pkill -HUP silently fail." },
+    { "content": "Passthrough auth (enabled_plain): passwords in users.toml must match PostgreSQL backend passwords exactly; the sidecar does not manage PG users. Never log passwords." },
+    { "content": "versions.env pins the PgDog image (single source of truth); production pins versions, test compose deliberately uses :main to catch upstream breakage early." },
+    { "content": "Critical test rule: never verify the dynamic function by manually invoking generate-config.sh — the autonomous polling loop is the feature; tests wait for it to detect changes (33-assertion integration suite on ports 5433/6433)." },
+    { "content": "See AGENTS.md for pitfalls (PG18+ volume mounts, psql -t whitespace, flock, set -e in loops)." }
+  ],
+  "pages": [
+    {
+      "title": "Architecture Overview",
+      "purpose": "Sidecar + shared volume + shared PID namespace design: how database discovery becomes TOML and reaches PgDog",
+      "page_notes": [{ "content": "Include Mermaid diagram: postgres -> generate-config.sh -> .tmp -> shared /pgdog volume -> SIGHUP -> pgdog" }]
+    },
+    {
+      "title": "Config Generation Loop",
+      "purpose": "generate-config.sh internals: psql discovery, hand-rolled TOML output, atomic .tmp+mv writes, flock locking, idempotent cmp -s comparison",
+      "parent": "Architecture Overview"
+    },
+    {
+      "title": "Reload Mechanics",
+      "purpose": "PID namespace sharing, same-UID requirement, pkill -HUP, PgDog's SIGHUP/RELOAD semantics, and passthrough auth constraints",
+      "parent": "Architecture Overview"
+    },
+    {
+      "title": "Environment and Compose",
+      "purpose": "All env vars and defaults, versions.env pinning, production vs test compose differences, and the compose.sh/update-pgdog-version.sh helpers",
+      "parent": "Architecture Overview"
+    },
+    {
+      "title": "Testing and CI",
+      "purpose": "33-assertion integration suite, the autonomous-loop testing rule, ShellCheck + markdownlint + pinned/main image matrix + Semgrep CI jobs"
+    }
+  ]
+}
