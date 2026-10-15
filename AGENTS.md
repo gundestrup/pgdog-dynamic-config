@@ -46,7 +46,7 @@ when the configuration changes.
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
 │   └── pgdog-dynamic-config.Dockerfile  # Sidecar image (alpine:3.22 + postgresql-client + tini)
 └── tests/
-    ├── integration-test.sh         # Integration test suite (45 assertions)
+    ├── integration-test.sh         # Integration test suite (46 assertions)
     ├── docker-compose.test.yml     # Test compose (postgres:18, pinned PgDog/main, ports 5433/6433)
     └── setup.sql                   # Pre-creates pgdog, appdb databases and users for tests
 ```
@@ -128,7 +128,7 @@ when the configuration changes.
 ```
 
 This spins up a full Docker Compose stack on ports **5433/6433** (to
-avoid conflicts with production), runs 45 assertions, and tears down on
+avoid conflicts with production), runs 46 assertions, and tears down on
 exit. The pinned PgDog image comes from `versions.env`; set `PGDOG_IMAGE`
 to test another image. No manual setup required.
 
@@ -159,6 +159,10 @@ to test another image. No manual setup required.
 17. The OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold
     start (PgDog only starts the metrics server from startup config — a
     SIGHUP reload never spawns it).
+18. PgDog logs contain no WARN/ERROR beyond known-benign operational
+    notices (missing config at boot, random admin password,
+    `passthrough_auth` plaintext, role elections) — PgDog reports
+    semantic misconfig as warnings, not errors.
 
 ### Critical testing rule
 
@@ -229,6 +233,41 @@ All jobs, including both integration-test matrix runs and the Semgrep scan, must
 - **Config files:** `pgdog.toml` (databases, general settings) and
   `users.toml` (user credentials, database access lists)
 
+### PgDog behavior notes (learned from upstream source)
+
+Non-obvious upstream semantics that have bitten us or shaped the design
+— verified against `pgdogdev/pgdog` source, keep updated when the pinned
+version changes:
+
+- **`role = "auto"` requires LSN checks.** `lsn_check_delay` defaults to
+  `MAX_DURATION` (disabled) — we emit `lsn_check_delay = 0` to enable it.
+  Without it, `auto` pools are treated as replicas, no primary is ever
+  elected, and every connection times out at checkout. PgDog only warns
+  (`"LSN checks are disabled: this disables automatic role detection"`).
+- **Semantic misconfig = WARN, not error.** `pgdog configcheck` validates
+  schema (`deny_unknown_fields`) but not semantics. Problems like
+  role/LSN mismatch, `read_write_split` with no replicas, or duplicate
+  schema owners surface only as log WARNs — Test 9 asserts none appear.
+- **OpenMetrics starts at boot only.** A SIGHUP reload never spawns the
+  metrics listener; the config must exist when PgDog starts.
+- **`users.toml` user lookup matches `(name, database)` exactly.** The
+  admin user has an empty `database` field plus `all_databases = true`,
+  so client connections never "find" the config user — passthrough auth
+  validates them directly against the requested database.
+- **Failed reload keeps old config.** `configuration reload error` is
+  logged and PgDog continues serving the previous config.
+- **Environment fallbacks:** many `[general]` settings read
+  `PGDOG_*` env vars when unset in TOML (e.g. `PGDOG_LSN_CHECK_DELAY`).
+
+### Tooling behavior notes
+
+- **BusyBox `flock FD` does not hold across `exec`'d children** on
+  Alpine — `flock FILE COMMAND` form works on both BusyBox and
+  util-linux.
+- **kcov only instruments the script named directly on its command
+  line** — not `sh -c "..."` inline code and not child scripts it
+  invokes. Multiple `kcov` runs into the same output dir merge.
+
 ---
 
 ## Instructions for AI Assistants
@@ -263,7 +302,7 @@ description: Run integration tests for pgdog-dynamic-config
 ---
 1. Read AGENTS.md for project context and testing rules.
 2. Run `./tests/integration-test.sh` from the project root.
-3. All 45 assertions must pass with 0 failures.
+3. All 46 assertions must pass with 0 failures.
 4. If tests fail, check the "Common Pitfalls" section of AGENTS.md.
 ```
 

@@ -45,6 +45,29 @@ Instead of manually maintaining database and user definitions, this sidecar:
 - Validates required credentials are set before generating config
 - Uses a lock file to prevent concurrent runs from corrupting output
 
+### PgDog feature coverage
+
+What the generated config uses from PgDog, and whether the integration
+suite verifies it end-to-end:
+
+| PgDog feature | Generated config | Tested |
+| --- | --- | --- |
+| Database discovery → `[[databases]]` entries | ✅ — one per non-template DB | ✅ — content + live connections |
+| Automatic role detection | `role = "auto"` + `lsn_check_delay = 0` | ✅ — `automatic database role detection` log line |
+| `passthrough_auth = "enabled_plain"` | ✅ | ✅ — real `psql` logins through PgDog |
+| `all_databases = true` (admin user) | ✅ | ✅ — `users.toml` stays static across add/drop |
+| OpenMetrics (`openmetrics_port/namespace`) | `9090`, `pgdog_` prefix | ✅ — cold-start scrape |
+| SIGHUP reload | Triggered on config change | ✅ — `reloading configuration` log line |
+| `pgdog configcheck` validation | n/a (generated output) | ✅ — every run |
+| `[admin]` console (`SHOW POOLS`, `RELOAD`, …) | No — password randomly generated | No |
+| Replicas / `read_write_split` / load balancing | No — single upstream host | No |
+| Sharding (`omnisharded`, `sharded_tables`) | No | No |
+| Mirror / multi-host topologies | No | No |
+
+Rows marked **No** are PgDog capabilities the sidecar does not emit —
+the generated config is intentionally minimal. Adding one means adding
+it to `pgdog/generate-config.sh` *and* an integration assertion.
+
 ---
 
 ## 📁 Directory Structure

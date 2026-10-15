@@ -635,6 +635,30 @@ else
   fail "Lock contention not handled (rc=$_lock_rc, output: $_lock_out)"
 fi
 
+# --- Test 9: No unexpected warnings or errors in PgDog logs ---
+#
+# PgDog reports semantically broken — but syntactically valid — config as
+# WARN lines (e.g. 'role set to "auto" but LSN checks are disabled'),
+# which pgdog configcheck does not flag. Assert no WARN/ERROR beyond the
+# known-benign operational notices: missing config at boot (PgDog starts
+# before the sidecar writes it), random admin password, passthrough_auth
+# plaintext notice, and role-detection elections.
+
+log "Test 9: No unexpected warnings or errors in PgDog logs"
+
+UNEXPECTED_LOGS=$(docker logs "$PGDOG_CONTAINER" 2>&1 \
+  | grep -E ' (WARN|ERROR) ' \
+  | grep -v 'admin password has been randomly generated' \
+  | grep -v 'passthrough_auth.*plaintext' \
+  | grep -v "doesn't exist, loading defaults instead" \
+  | grep -v 'new primary chosen' \
+  | grep -v 'database role changed in shard' || true)
+if [ -z "$UNEXPECTED_LOGS" ]; then
+  pass "No unexpected WARN/ERROR in PgDog logs"
+else
+  fail "Unexpected PgDog log lines: $UNEXPECTED_LOGS"
+fi
+
 # --- Coverage collection (kcov, best-effort) ---
 #
 # Runs generate-config.sh and entrypoint.sh under kcov inside a throwaway
