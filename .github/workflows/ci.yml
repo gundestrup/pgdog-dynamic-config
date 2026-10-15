@@ -74,18 +74,16 @@ jobs:
           fail_ci_if_error: false
           handle_no_reports_found: true
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-
       - name: Upload test results to Codecov
         if: always() && matrix.pgdog-target == 'pinned'
-        run: |
-          pip3 install --require-hashes --only-binary=:all: -r .github/requirements-codecov.txt
-          codecovcli do-upload --report-type test_results --file test-results/junit.xml --token "$CODECOV_TOKEN" || echo "Codecov test-results upload failed (non-fatal)"
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: ./test-results/junit.xml
+          flags: integration-tests
+          fail_ci_if_error: false
+          handle_no_reports_found: true
 
       - name: Publish test report
         if: always()
