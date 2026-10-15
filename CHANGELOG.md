@@ -4,6 +4,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-15
+
 ### Added
 
 - Scheduled workflow `.github/workflows/pgdog-upgrade.yml` that checks daily for new upstream PgDog releases, runs the full integration suite against the new version, and pushes the `versions.env` bump plus README badge/CHANGELOG updates to `main` only when tests pass — otherwise it opens or updates a `PgDog <version> compatibility check failed` issue.
