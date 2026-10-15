@@ -1,0 +1,94 @@
+name: PgDog upgrade check
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: pgdog-upgrade
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    name: Check, test, and pin latest PgDog
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Check latest PgDog release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh api repos/pgdogdev/pgdog/releases/latest --jq '.tag_name')"
+          current="$(sed -n 's/^PGDOG_VERSION=//p' versions.env)"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [ "$latest" = "$current" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pinned version
+        if: steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/update-pgdog-version.sh
+
+      - name: Ensure pgdog dir is writable
+        if: steps.check.outputs.update == 'true'
+        run: mkdir -p pgdog && sudo chown 1000:1000 pgdog
+
+      - name: Run integration tests
+        if: steps.check.outputs.update == 'true'
+        run: ./tests/integration-test.sh
+
+      - name: Report incompatibility
+        if: failure() && steps.check.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LATEST: ${{ steps.check.outputs.latest }}
+          CURRENT: ${{ steps.check.outputs.current }}
+        run: |
+          docker compose -f tests/docker-compose.test.yml logs --tail=200 2>/dev/null || true
+          gh label create upstream --repo "$GITHUB_REPOSITORY" --color fbca04 --description "Upstream PgDog compatibility" --force
+          title="PgDog $LATEST compatibility check failed"
+          body="The scheduled upgrade workflow ran the integration suite against PgDog $LATEST and it failed. The pinned version stays at $CURRENT until this is resolved.
+
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 100 --json number,title --jq --arg t "$title" '.[] | select(.title == $t) | .number' | head -n1)"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label upstream --body "$body"
+          fi
+
+      - name: Update README badge and CHANGELOG
+        if: steps.check.outputs.update == 'true'
+        env:
+          LATEST: ${{ steps.check.outputs.latest }}
+        run: |
+          sed -i "s|PgDog_tested-v[0-9.]*-success|PgDog_tested-${LATEST}-success|" README.md
+          awk -v entry="- Bumped the pinned PgDog version to \`$LATEST\` in \`versions.env\` to match the latest upstream release (automated check)." '
+            /^## \[Unreleased\]/ { u=1; print; next }
+            u && /^### Changed$/ { print; getline; print; print entry; done=1; u=0; next }
+            u && /^## \[/ { print "### Changed"; print ""; print entry; print ""; done=1; u=0; print; next }
+            { print }
+            END { if (!done && u) { print "### Changed"; print ""; print entry } }
+          ' CHANGELOG.md > CHANGELOG.md.new && mv CHANGELOG.md.new CHANGELOG.md
+
+      - name: Commit and push
+        if: steps.check.outputs.update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add versions.env README.md CHANGELOG.md
+          git commit -m "Bump pinned PgDog to ${{ steps.check.outputs.latest }}"
+          git push

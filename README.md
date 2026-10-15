@@ -4,6 +4,8 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![Shell](https://img.shields.io/badge/shell-sh-green)
 ![PgDog](https://img.shields.io/badge/Made_for-PgDog-blue)
+![PgDog tested](https://img.shields.io/badge/PgDog_tested-v0.1.61-success)
+![PgDog latest](https://img.shields.io/github/v/release/pgdogdev/pgdog?label=PgDog%20latest)
 ![Status](https://img.shields.io/badge/status-active-success)
 [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gundestrup/pgdog-dynamic-config)
 [![CI](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml/badge.svg)](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml)
@@ -98,7 +100,7 @@ environment:
 2. Make sure `./pgdog` is owned by the same UID/GID you set in `USER_ID`/`GROUP_ID` (default `1000:1000`) so the sidecar can write the generated TOML files.
 3. Run `./scripts/compose.sh up -d` so the shared PgDog version is loaded from `versions.env`.
 
-The pinned PgDog version is maintained in `versions.env`. Before a release, check and update it with:
+The pinned PgDog version is maintained in `versions.env`. A scheduled workflow (`pgdog-upgrade.yml`) checks daily for new upstream releases, runs the full integration suite against the new version, and commits the bump only when all tests pass — otherwise it opens a tracking issue. The `PgDog tested` badge above always shows the last version verified by CI; compare it with `PgDog latest` to spot a pending or failing upgrade. To check or update manually:
 
 ```sh
 ./scripts/update-pgdog-version.sh --check

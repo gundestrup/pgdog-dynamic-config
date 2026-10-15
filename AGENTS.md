@@ -175,6 +175,12 @@ request to `main`/`master` with five job definitions:
 - **Semgrep** — static analysis via `semgrep ci` (App policies); the local
   `.semgrep.yml` shell rules are kept in sync by convention.
 
+A separate scheduled workflow, `.github/workflows/pgdog-upgrade.yml`, checks
+daily for new upstream PgDog releases: it bumps `versions.env`, runs the
+integration suite against the new image, and pushes the bump (plus README
+badge and CHANGELOG updates) to `main` only when tests pass. On failure it
+opens or updates a `PgDog <version> compatibility check failed` issue.
+
 All jobs, including both integration-test matrix runs and the Semgrep scan, must pass for a PR to be mergeable.
 
 ---

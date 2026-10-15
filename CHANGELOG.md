@@ -6,6 +6,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ### Added
 
+- Scheduled workflow `.github/workflows/pgdog-upgrade.yml` that checks daily for new upstream PgDog releases, runs the full integration suite against the new version, and pushes the `versions.env` bump plus README badge/CHANGELOG updates to `main` only when tests pass — otherwise it opens or updates a `PgDog <version> compatibility check failed` issue.
+- `PgDog tested` and `PgDog latest` badges in `README.md` — the tested badge is updated by the upgrade workflow on success, the latest badge tracks upstream releases, so an upgrade gap is visible at a glance.
 - `.devin/config.json` with Devin CLI project permissions allow-listing the quality-gate commands (Semgrep, ShellCheck, Docker, test/helper scripts)
 - `.sonarcloud.properties` classifying `tests/` as test code and excluding `coverage/`, `test-results/`, `data/`, `logs/`, and generated `pgdog/` artifacts — so SonarCloud AutoScan does not count test infrastructure or generated files as production code.
 - `scripts/hooks/pre-commit` running ShellCheck on all shell scripts; enable with `git config core.hooksPath scripts/hooks`.
