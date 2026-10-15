@@ -4,6 +4,18 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- New integration assertions (44 total): generated config passes `pgdog configcheck` (PgDog's own `deny_unknown_fields` parser), and the OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold start.
+
+### Changed
+
+- CI: Semgrep and `codecov-cli` moved from inline `pip3 install` pins to hashed requirements files under `.github/` (`requirements-ci.txt` for Semgrep 1.180.0, `requirements-codecov.txt` for codecov-cli 11.3.1 — separate files because their `click` version constraints conflict), installed with `--require-hashes`. Added `.github/dependabot.yml` covering github-actions and the `/.github` pip requirements.
+
+### Fixed
+
+- `generate-config.sh` only compared `pgdog.toml` before deciding to install, so a `users.toml`-only change (rotated password, changed `PGDOG_USER`/`PGDOG_DATABASE`) was silently dropped while reporting "No changes". Both files are now compared; covered by a new regression assertion.
+
 ## [0.2.4] - 2026-10-15
 
 ### Added

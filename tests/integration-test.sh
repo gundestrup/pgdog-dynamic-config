@@ -23,8 +23,12 @@
 #   9. The autonomous loop removes databases that were dropped — config
 #      shrinks, not just grows.
 #  10. Idempotency — manually re-running with no changes reports "No changes".
-#  11. Missing POSTGRES_PASSWORD / PGDOG_PASSWORD exits 1 with a clear error.
-#  12. A second concurrent invocation reports "skipping this cycle".
+#  11. A users.toml-only change (e.g. rotated password) is installed — not
+#      skipped just because pgdog.toml is unchanged.
+#  12. Missing POSTGRES_PASSWORD / PGDOG_PASSWORD exits 1 with a clear error.
+#  13. A second concurrent invocation reports "skipping this cycle".
+#  14. The generated config passes `pgdog configcheck`.
+#  15. The OpenMetrics endpoint serves pgdog_-prefixed metrics.
 #
 # Usage:
 #   ./tests/integration-test.sh
@@ -258,6 +262,7 @@ cleanup() {
   fi
   dc exec -T pgdog-dynamic-config rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp 2>/dev/null || true
   docker rm -f "${COV_CONTAINER:-pgdog-coverage-run}" >/dev/null 2>&1 || true
+  docker rm -f pgdog-metrics-check >/dev/null 2>&1 || true
   dc down -v --remove-orphans 2>/dev/null || true
   rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"
   rm -f "$PROJECT_DIR/pgdog/pgdog.toml" "$PROJECT_DIR/pgdog/users.toml"
@@ -361,6 +366,19 @@ case "$SIDECAR_LOGS" in
   *) pass "No passwords leaked in sidecar logs" ;;
 esac
 
+# --- Test 2c: Generated config passes PgDog's own validation ---
+#
+# PgDog parses both files with deny_unknown_fields, so `pgdog configcheck`
+# is authoritative validation of what the sidecar generated.
+
+log "Test 2c: Generated config passes 'pgdog configcheck'"
+
+if docker exec "$PGDOG_CONTAINER" pgdog --config /pgdog/pgdog.toml --users /pgdog/users.toml configcheck >/dev/null 2>&1; then
+  pass "Generated pgdog.toml and users.toml pass 'pgdog configcheck'"
+else
+  fail "pgdog configcheck rejected the generated config"
+fi
+
 # --- Test 3: PgDog accepts connections for pre-existing databases ---
 
 log "Test 3: PgDog accepts connections on port $PGDOG_PORT"
@@ -391,6 +409,33 @@ if PGPASSWORD="$TEST_POSTGRES_PASSWORD" \
 else
   fail "Connection via PgDog as postgres to appdb failed"
 fi
+
+# --- Test 3b: OpenMetrics endpoint serves pgdog_ metrics ---
+#
+# The generated config sets openmetrics_port = 9090 and namespace pgdog_.
+# PgDog only starts the metrics listener from startup config — a SIGHUP
+# reload never spawns it — and the main pgdog-test container booted before
+# the sidecar generated anything, so a fresh instance is started with the
+# generated config to verify the endpoint comes up on a cold start.
+
+log "Test 3b: OpenMetrics endpoint"
+
+_net=$(docker inspect "$SIDECAR_CONTAINER" --format '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+_metrics=""
+docker rm -f pgdog-metrics-check >/dev/null 2>&1 || true
+if docker run -d --name pgdog-metrics-check --network "$_net" \
+  --user 1000:1000 -v "$PROJECT_DIR/pgdog:/pgdog:ro" -w /pgdog \
+  "${PGDOG_IMAGE:-ghcr.io/pgdogdev/pgdog:$PGDOG_VERSION}" pgdog run >/dev/null 2>&1; then
+  for _i in 1 2 3 4 5 6 7 8 9 10; do
+    _metrics=$(docker exec "$SIDECAR_CONTAINER" wget -qO- http://pgdog-metrics-check:9090/metrics 2>/dev/null) && break
+    sleep 1
+  done
+fi
+docker rm -f pgdog-metrics-check >/dev/null 2>&1 || true
+case "$_metrics" in
+  *pgdog_*) pass "OpenMetrics endpoint serves pgdog_-prefixed metrics" ;;
+  *) fail "OpenMetrics endpoint did not return pgdog_ metrics" ;;
+esac
 
 # --- Test 4: Autonomous dynamic config update — new database AND user ---
 #
@@ -501,6 +546,42 @@ if [ "$_idempotency_ok" = "1" ]; then
   pass "Script correctly detects no changes on re-run"
 else
   fail "Script did not report 'No changes' on re-run (output: $SIDECAR_OUTPUT)"
+fi
+
+# --- Test 6b: users.toml-only changes are installed ---
+#
+# Regression test: previously only pgdog.toml was compared before deciding
+# to install, so a changed users.toml (e.g. rotated password) was silently
+# dropped while reporting "No changes". The generate+verify runs inside a
+# single exec so the background poll loop cannot restore the file in
+# between.
+
+log "Test 6b: users.toml-only change triggers update"
+
+_users_ok=0
+for _attempt in 1 2 3 4 5; do
+  _out=$(docker exec -e PGDOG_PASSWORD=rotated-secret-456 "$SIDECAR_CONTAINER" sh -c \
+    '/pgdog/generate-config.sh; grep -q rotated-secret-456 /pgdog/users.toml && echo INSTALLED' 2>&1)
+  case "$_out" in
+    *"skipping this cycle"*) sleep 1 ;;
+    *"Config changed"*INSTALLED*) _users_ok=1; break ;;
+    *) break ;;
+  esac
+done
+
+if [ "$_users_ok" = "1" ]; then
+  pass "users.toml-only change reports 'Config changed' and is installed"
+else
+  fail "users.toml-only change was not installed (output: $_out)"
+fi
+
+# Restore real credentials — either our run or the next poll cycle fixes
+# the file; asserting absence of the marker is deterministic either way.
+run_generate
+if ! grep -q 'rotated-secret-456' "$USERS_TOML"; then
+  pass "users.toml restored with real credentials"
+else
+  fail "users.toml still contains rotated credentials"
 fi
 
 # --- Test 7: Credential validation fails fast ---

@@ -93,7 +93,7 @@ EOF
 } > "$USERS_TMP"
 
 # --- RELOAD pgdog.toml og users.toml if changed ---
-if ! cmp -s "$TMP" "$OUT"; then
+if ! cmp -s "$TMP" "$OUT" || ! cmp -s "$USERS_TMP" "$USERS_OUT"; then
   echo "Config changed — updating PgDog config"
   mv "$TMP" "$OUT"
   mv "$USERS_TMP" "$USERS_OUT"

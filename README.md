@@ -238,6 +238,9 @@ The tests verify:
 - Idempotency — manually re-running the script with no changes reports "No changes".
 - Missing `POSTGRES_PASSWORD`/`PGDOG_PASSWORD` fails fast with a clear error.
 - A second concurrent invocation reports "skipping this cycle" (lock file).
+- A `users.toml`-only change (e.g. rotated password) is installed even when `pgdog.toml` is unchanged.
+- The generated config passes `pgdog configcheck` — PgDog's own strict validation.
+- The OpenMetrics endpoint (`openmetrics_port = 9090`) serves `pgdog_`-prefixed metrics. Note: PgDog only starts the metrics listener from its startup configuration — a SIGHUP reload does not spawn it — so metrics require the config to exist when PgDog boots.
 
 ### Running tests
 
