@@ -21,7 +21,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ### Changed
 
-- Bumped the pinned PgDog version to `v0.1.60` in `versions.env` to match the latest upstream release.
+- CI pip installs now use hash-pinned requirements files compiled with `pip-compile --generate-hashes` (`.github/requirements-ci.txt` for Semgrep, `.github/requirements-codecov.txt` for codecov-cli); both jobs pin Python 3.12 via `actions/setup-python`. Semgrep bumped 1.176.1 → 1.180.0.
+- Bumped the pinned PgDog version to `v0.1.61` in `versions.env` to match the latest upstream release.
 - Corrected the `shell-bash` badge in `README.md` to `shell-sh` — the scripts are POSIX `sh`, not Bash.
 - `versions.env` file mode changed from `600` to `644` — it is not a secret.
 - Updated GitHub Actions to Node 24 runtimes: `actions/checkout` to v7.0.1 and `DavidAnson/markdownlint-cli2-action` to v24.2.0 (still pinned to full commit SHAs).
