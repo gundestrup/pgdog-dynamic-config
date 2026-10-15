@@ -4,6 +4,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-15
+
 ### Added
 
 - New integration assertions (46 total): generated config passes `pgdog configcheck` (PgDog's own `deny_unknown_fields` parser), the OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold start, PgDog logs `automatic database role detection is enabled`, and PgDog logs contain no WARN/ERROR beyond known-benign operational notices — semantic misconfig in PgDog is reported as warnings, not errors, so this catches the class of bug that `configcheck` cannot (e.g. `role = "auto"` with LSN checks disabled).

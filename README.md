@@ -59,12 +59,12 @@ suite verifies it end-to-end:
 | OpenMetrics (`openmetrics_port/namespace`) | `9090`, `pgdog_` prefix | ✅ — cold-start scrape |
 | SIGHUP reload | Triggered on config change | ✅ — `reloading configuration` log line |
 | `pgdog configcheck` validation | n/a (generated output) | ✅ — every run |
-| `[admin]` console (`SHOW POOLS`, `RELOAD`, …) | No — password randomly generated | No |
-| Replicas / `read_write_split` / load balancing | No — single upstream host | No |
-| Sharding (`omnisharded`, `sharded_tables`) | No | No |
-| Mirror / multi-host topologies | No | No |
+| `[admin]` console (`SHOW POOLS`, `RELOAD`, …) | ❌ — password randomly generated | ❌ |
+| Replicas / `read_write_split` / load balancing | ❌ — single upstream host | ❌ |
+| Sharding (`omnisharded`, `sharded_tables`) | ❌ | ❌ |
+| Mirror / multi-host topologies | ❌ | ❌ |
 
-Rows marked **No** are PgDog capabilities the sidecar does not emit —
+Rows marked ❌ are PgDog capabilities the sidecar does not emit —
 the generated config is intentionally minimal. Adding one means adding
 it to `pgdog/generate-config.sh` *and* an integration assertion.
 
