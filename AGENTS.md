@@ -46,7 +46,7 @@ when the configuration changes.
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
 │   └── pgdog-dynamic-config.Dockerfile  # Sidecar image (alpine:3.22 + postgresql-client + tini)
 └── tests/
-    ├── integration-test.sh         # Integration test suite (33 assertions)
+    ├── integration-test.sh         # Integration test suite (40 assertions)
     ├── docker-compose.test.yml     # Test compose (postgres:18, pinned PgDog/main, ports 5433/6433)
     └── setup.sql                   # Pre-creates pgdog, appdb databases and users for tests
 ```
@@ -128,7 +128,7 @@ when the configuration changes.
 ```
 
 This spins up a full Docker Compose stack on ports **5433/6433** (to
-avoid conflicts with production), runs 33 assertions, and tears down on
+avoid conflicts with production), runs 40 assertions, and tears down on
 exit. The pinned PgDog image comes from `versions.env`; set `PGDOG_IMAGE`
 to test another image. No manual setup required.
 
@@ -143,7 +143,12 @@ to test another image. No manual setup required.
 6. **Autonomous loop** detects a new database+user created at runtime and
    reloads PgDog — without any manual `docker exec` trigger.
 7. New database is accessible through PgDog after the autonomous update.
-8. Idempotency — manual re-run with no changes reports "No changes".
+8. PgDog's log shows `reloading configuration` — the SIGHUP actually landed.
+9. The autonomous loop **removes** a dropped database from the generated
+   config (config shrinks, not just grows).
+10. Idempotency — manual re-run with no changes reports "No changes".
+11. Missing `POSTGRES_PASSWORD`/`PGDOG_PASSWORD` exits 1 with a clear error.
+12. A second concurrent invocation reports "skipping this cycle".
 
 ### Critical testing rule
 
@@ -248,7 +253,7 @@ description: Run integration tests for pgdog-dynamic-config
 ---
 1. Read AGENTS.md for project context and testing rules.
 2. Run `./tests/integration-test.sh` from the project root.
-3. All 33 assertions must pass with 0 failures.
+3. All 40 assertions must pass with 0 failures.
 4. If tests fail, check the "Common Pitfalls" section of AGENTS.md.
 ```
 

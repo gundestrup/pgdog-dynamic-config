@@ -232,9 +232,12 @@ The tests verify:
 - `pgdog.toml` and `users.toml` are generated with correct content for multiple pre-existing databases.
 - No passwords are leaked in container logs.
 - PgDog accepts connections for `postgres`, `pgdog`, and additional databases.
-- The autonomous loop detects a new database and user created at runtime and regenerates the config + reloads PgDog via SIGHUP, without any manual trigger.
+- The autonomous loop detects a new database and user created at runtime and regenerates the config + reloads PgDog via SIGHUP, without any manual trigger; PgDog's "reloading configuration" log line confirms the signal landed.
 - New database is accessible through PgDog immediately after the autonomous update.
+- The autonomous loop removes a dropped database from the config — the config shrinks, not just grows.
 - Idempotency — manually re-running the script with no changes reports "No changes".
+- Missing `POSTGRES_PASSWORD`/`PGDOG_PASSWORD` fails fast with a clear error.
+- A second concurrent invocation reports "skipping this cycle" (lock file).
 
 ### Running tests
 

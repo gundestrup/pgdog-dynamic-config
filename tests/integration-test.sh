@@ -19,7 +19,12 @@
 #      runtime and regenerates the config + reloads PgDog, without any
 #      manual trigger (POLL_INTERVAL_SECONDS=5 for fast test cycles).
 #   7. New database is accessible through PgDog after the autonomous update.
-#   8. Idempotency — manually re-running with no changes reports "No changes".
+#   8. PgDog logs a configuration reload (SIGHUP reached the process).
+#   9. The autonomous loop removes databases that were dropped — config
+#      shrinks, not just grows.
+#  10. Idempotency — manually re-running with no changes reports "No changes".
+#  11. Missing POSTGRES_PASSWORD / PGDOG_PASSWORD exits 1 with a clear error.
+#  12. A second concurrent invocation reports "skipping this cycle".
 #
 # Usage:
 #   ./tests/integration-test.sh
@@ -175,6 +180,40 @@ wait_for_pattern() {
   return 1
 }
 
+# Polls a file until a pattern disappears — used to verify the autonomous
+# loop regenerates config after a database is dropped.
+wait_for_absence() {
+  _file="$1"
+  _pattern="$2"
+  _timeout="$3"
+  _elapsed=0
+  while [ "$_elapsed" -lt "$_timeout" ]; do
+    if ! grep -q "$_pattern" "$_file" 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+    _elapsed=$((_elapsed + 1))
+  done
+  return 1
+}
+
+# Invokes generate-config.sh in the sidecar container, retrying when the
+# background loop happens to hold the lock at that moment. Extra args are
+# passed to docker exec (e.g. -e VAR= to override environment). Result is
+# in RUN_OUT / RUN_RC.
+run_generate() {
+  RUN_OUT=""
+  RUN_RC=0
+  _a=0
+  while [ "$_a" -lt 5 ]; do
+    RUN_OUT=$(docker exec "$@" "$SIDECAR_CONTAINER" /pgdog/generate-config.sh 2>&1) && RUN_RC=0 || RUN_RC=$?
+    case "$RUN_OUT" in
+      *"skipping this cycle"*) sleep 1; _a=$((_a + 1)) ;;
+      *) return 0 ;;
+    esac
+  done
+}
+
 # --- Setup ---
 
 log "Setup"
@@ -218,6 +257,7 @@ cleanup() {
     dc logs --tail=50 db pgdog pgdog-dynamic-config 2>/dev/null || true
   fi
   dc exec -T pgdog-dynamic-config rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp 2>/dev/null || true
+  docker rm -f "${COV_CONTAINER:-pgdog-coverage-run}" >/dev/null 2>&1 || true
   dc down -v --remove-orphans 2>/dev/null || true
   rm -rf "$PROJECT_DIR/data" "$PROJECT_DIR/logs"
   rm -f "$PROJECT_DIR/pgdog/pgdog.toml" "$PROJECT_DIR/pgdog/users.toml"
@@ -379,6 +419,14 @@ assert_contains "$USERS_TOML" '"newdb"' "users.toml postgres databases array inc
 # Allow PgDog's SIGHUP reload (triggered by the autonomous loop) to complete
 sleep 2
 
+# PgDog logs "reloading configuration" when the SIGHUP lands — proves the
+# signal reached the process, not just that the file changed on disk.
+PGDOG_LOGS=$(docker logs "$PGDOG_CONTAINER" 2>&1 || true)
+case "$PGDOG_LOGS" in
+  *"reloading configuration"*) pass "PgDog logged 'reloading configuration' after autonomous update" ;;
+  *) fail "PgDog did not log a configuration reload after autonomous update" ;;
+esac
+
 # --- Test 5: New user connects through PgDog after dynamic update ---
 
 log "Test 5: New user connects through PgDog after dynamic update"
@@ -394,9 +442,35 @@ else
   fail "Connection via PgDog as postgres to newdb failed"
 fi
 
-# Clean up the test database and user
-docker exec "$DB_CONTAINER" psql -U postgres -c "DROP DATABASE newdb;" 2>/dev/null || true
+# --- Test 5b: Autonomous loop removes a dropped database ---
+#
+# PgDog pools backend connections, so a plain DROP DATABASE can fail with
+# "being accessed by other users"; WITH (FORCE) terminates them first.
+
+log "Test 5b: Autonomous loop removes dropped database (no manual trigger)"
+
+docker exec "$DB_CONTAINER" psql -U postgres -c "DROP DATABASE newdb WITH (FORCE);" 2>/dev/null || true
 docker exec "$DB_CONTAINER" psql -U postgres -c "DROP USER newuser;" 2>/dev/null || true
+
+if docker exec "$DB_CONTAINER" psql -U postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname='newdb';" 2>/dev/null | grep -q '^1$'; then
+  fail "newdb still exists in PostgreSQL after DROP DATABASE ... WITH (FORCE)"
+else
+  pass "newdb dropped in PostgreSQL"
+fi
+
+# The autonomous loop (POLL_INTERVAL_SECONDS=5) must regenerate the config
+# and shrink it — this exercises the same change-detection path as adds.
+if wait_for_absence "$PGDOG_TOML" 'name = "newdb"' 30; then
+  pass "Autonomous loop removed newdb from pgdog.toml"
+else
+  fail "newdb still present in pgdog.toml 30s after drop"
+fi
+
+if wait_for_absence "$USERS_TOML" '"newdb"' 30; then
+  pass "Autonomous loop removed newdb from users.toml databases array"
+else
+  fail "newdb still present in users.toml 30s after drop"
+fi
 
 # --- Test 6: Idempotency — no change when config is unchanged ---
 #
@@ -429,22 +503,65 @@ else
   fail "Script did not report 'No changes' on re-run (output: $SIDECAR_OUTPUT)"
 fi
 
+# --- Test 7: Credential validation fails fast ---
+#
+# generate-config.sh must exit 1 with a clear error when a required
+# password is missing, instead of generating a config with empty values.
+
+log "Test 7: Credential validation"
+
+run_generate -e POSTGRES_PASSWORD=
+if [ "$RUN_RC" -eq 1 ] && printf '%s\n' "$RUN_OUT" | grep -q 'ERROR: POSTGRES_PASSWORD is not set'; then
+  pass "Missing POSTGRES_PASSWORD exits 1 with clear error"
+else
+  fail "Missing POSTGRES_PASSWORD not handled (rc=$RUN_RC, output: $RUN_OUT)"
+fi
+
+run_generate -e PGDOG_PASSWORD=
+if [ "$RUN_RC" -eq 1 ] && printf '%s\n' "$RUN_OUT" | grep -q 'ERROR: PGDOG_PASSWORD is not set'; then
+  pass "Missing PGDOG_PASSWORD exits 1 with clear error"
+else
+  fail "Missing PGDOG_PASSWORD not handled (rc=$RUN_RC, output: $RUN_OUT)"
+fi
+
+# --- Test 8: Concurrent run detection (lock file) ---
+#
+# Holding the lock while invoking generate-config.sh must produce
+# "skipping this cycle" and exit 0 — this is the mechanism that keeps the
+# autonomous loop and manual invocations from racing on the temp files.
+
+log "Test 8: Concurrent run detection (lock file)"
+
+_lock_out=$(docker exec "$SIDECAR_CONTAINER" \
+  sh -c 'flock /pgdog/.generate-config.lock sleep 4 & sleep 1; /pgdog/generate-config.sh' 2>&1) \
+  && _lock_rc=0 || _lock_rc=$?
+if [ "$_lock_rc" -eq 0 ] && printf '%s\n' "$_lock_out" | grep -q 'skipping this cycle'; then
+  pass "Concurrent invocation reports 'skipping this cycle' and exits 0"
+else
+  fail "Lock contention not handled (rc=$_lock_rc, output: $_lock_out)"
+fi
+
 # --- Coverage collection (kcov, best-effort) ---
 #
-# Runs generate-config.sh under kcov inside a throwaway container on the
-# test network (the postgres:18 image already pulled by the stack has apt;
-# kcov is not packaged for Alpine). Produces Cobertura XML in ./coverage
-# for Codecov upload in CI. Failure here is non-fatal.
+# Runs generate-config.sh and entrypoint.sh under kcov inside a throwaway
+# container on the test network (the postgres:18 image already pulled by
+# the stack has apt; kcov is not packaged for Alpine). The wrapper invokes
+# generate-config.sh in several modes so all branches are measured:
+# unchanged config, missing credentials, lock contention, changed config,
+# and the entrypoint poll loop incl. its SIGTERM trap. Produces Cobertura
+# XML in ./coverage for Codecov upload in CI. Failure here is non-fatal.
 
 log "Collecting coverage report (kcov)"
 
 _cobertura=""
+COV_CONTAINER="pgdog-coverage-run"
 _net=$(docker inspect "$SIDECAR_CONTAINER" --format '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
 if [ -n "$_net" ]; then
   docker stop "$SIDECAR_CONTAINER" >/dev/null 2>&1 || true
   rm -rf "$COVERAGE_DIR"
   mkdir -p "$COVERAGE_DIR"
-  docker run --rm --cap-add SYS_PTRACE --security-opt seccomp=unconfined \
+  docker rm -f "$COV_CONTAINER" >/dev/null 2>&1 || true
+  if docker run -d --name "$COV_CONTAINER" --cap-add SYS_PTRACE --security-opt seccomp=unconfined \
     --network "$_net" \
     -v "$PROJECT_DIR/pgdog:/pgdog" -v "$COVERAGE_DIR:/coverage" \
     -e POSTGRES_HOST="$DB_CONTAINER" \
@@ -453,7 +570,17 @@ if [ -n "$_net" ]; then
     -e PGDOG_PASSWORD="$TEST_PGDOG_PASSWORD" \
     -e PGDOG_USER=pgdog \
     -e PGDOG_DATABASE=pgdog \
-    postgres:18 sh -c 'apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq kcov >/dev/null 2>&1 && kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh; rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp' >/dev/null 2>&1 || true
+    postgres:18 sleep 600 >/dev/null 2>&1; then
+    docker exec "$COV_CONTAINER" sh -c 'apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq kcov >/dev/null 2>&1' || true
+    docker exec "$COV_CONTAINER" kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh >/dev/null 2>&1 || true
+    docker exec -e POSTGRES_PASSWORD= "$COV_CONTAINER" kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh >/dev/null 2>&1 || true
+    docker exec -e PGDOG_PASSWORD= "$COV_CONTAINER" kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh >/dev/null 2>&1 || true
+    docker exec "$COV_CONTAINER" sh -c 'rm -f /pgdog/pgdog.toml /pgdog/users.toml && kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh' >/dev/null 2>&1 || true
+    docker exec "$COV_CONTAINER" sh -c 'flock /pgdog/.generate-config.lock sleep 4 & sleep 1; kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh' >/dev/null 2>&1 || true
+    docker exec -e POLL_INTERVAL_SECONDS=2 "$COV_CONTAINER" timeout -s TERM 8 kcov --include-pattern=/pgdog /coverage /pgdog/entrypoint.sh >/dev/null 2>&1 || true
+    docker exec "$COV_CONTAINER" sh -c 'rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp /pgdog/.generate-config.lock' >/dev/null 2>&1 || true
+    docker rm -f "$COV_CONTAINER" >/dev/null 2>&1 || true
+  fi
   _cobertura=$(find "$COVERAGE_DIR" -name cobertura.xml -print -quit 2>/dev/null)
 fi
 
