@@ -48,6 +48,7 @@ DBS=$(psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -t -A -c "SELECT datname FROM
   echo 'passthrough_auth = "enabled_plain"'
   echo 'openmetrics_port = 9090'
   echo 'openmetrics_namespace = "pgdog_"'
+  echo 'lsn_check_delay = 0'
 } > "$TMP"
 
 while IFS= read -r DB; do
@@ -58,25 +59,13 @@ while IFS= read -r DB; do
     echo "name = \"$DB\""
     echo "host = \"$POSTGRES_HOST\""
     echo 'port = 5432'
-    echo 'role = "primary"'
+    echo 'role = "auto"'
   } >> "$TMP"
 done <<EOF
 $DBS
 EOF
 
 # --- GENERATE users.toml ---
-
-# Build database list for postgres user
-DATABASES_LIST=""
-while IFS= read -r DB; do
-  [ -z "$DB" ] && continue
-  if [ -n "$DATABASES_LIST" ]; then
-    DATABASES_LIST="$DATABASES_LIST, "
-  fi
-  DATABASES_LIST="$DATABASES_LIST\"$DB\""
-done <<EOF
-$DBS
-EOF
 
 {
   echo '[[users]]'
@@ -89,7 +78,7 @@ EOF
   echo '[[users]]'
   echo "name=\"$POSTGRES_USER\""
   echo "password=\"$POSTGRES_PASSWORD\""
-  echo "databases=[$DATABASES_LIST]"
+  echo 'all_databases=true'
 } > "$USERS_TMP"
 
 # --- RELOAD pgdog.toml og users.toml if changed ---

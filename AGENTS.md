@@ -46,7 +46,7 @@ when the configuration changes.
 │   ├── entrypoint.sh               # Polling loop: runs generate-config.sh every N seconds
 │   └── pgdog-dynamic-config.Dockerfile  # Sidecar image (alpine:3.22 + postgresql-client + tini)
 └── tests/
-    ├── integration-test.sh         # Integration test suite (44 assertions)
+    ├── integration-test.sh         # Integration test suite (45 assertions)
     ├── docker-compose.test.yml     # Test compose (postgres:18, pinned PgDog/main, ports 5433/6433)
     └── setup.sql                   # Pre-creates pgdog, appdb databases and users for tests
 ```
@@ -128,7 +128,7 @@ when the configuration changes.
 ```
 
 This spins up a full Docker Compose stack on ports **5433/6433** (to
-avoid conflicts with production), runs 44 assertions, and tears down on
+avoid conflicts with production), runs 45 assertions, and tears down on
 exit. The pinned PgDog image comes from `versions.env`; set `PGDOG_IMAGE`
 to test another image. No manual setup required.
 
@@ -152,7 +152,11 @@ to test another image. No manual setup required.
 12. Missing `POSTGRES_PASSWORD`/`PGDOG_PASSWORD` exits 1 with a clear error.
 13. A second concurrent invocation reports "skipping this cycle".
 14. The generated config passes `pgdog configcheck`.
-15. The OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold
+15. `role = "auto"` + `lsn_check_delay = 0` — PgDog logs
+    `automatic database role detection is enabled`.
+16. `all_databases = true` on the admin user — `users.toml` stays static
+    across database add/drop.
+17. The OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold
     start (PgDog only starts the metrics server from startup config — a
     SIGHUP reload never spawns it).
 
@@ -259,7 +263,7 @@ description: Run integration tests for pgdog-dynamic-config
 ---
 1. Read AGENTS.md for project context and testing rules.
 2. Run `./tests/integration-test.sh` from the project root.
-3. All 44 assertions must pass with 0 failures.
+3. All 45 assertions must pass with 0 failures.
 4. If tests fail, check the "Common Pitfalls" section of AGENTS.md.
 ```
 

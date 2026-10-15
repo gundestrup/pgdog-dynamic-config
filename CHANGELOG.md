@@ -6,9 +6,12 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ### Added
 
-- New integration assertions (44 total): generated config passes `pgdog configcheck` (PgDog's own `deny_unknown_fields` parser), and the OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold start.
+- New integration assertions (45 total): generated config passes `pgdog configcheck` (PgDog's own `deny_unknown_fields` parser), the OpenMetrics endpoint serves `pgdog_`-prefixed metrics on a cold start, and PgDog logs `automatic database role detection is enabled`.
 
 ### Changed
+
+- Generated `pgdog.toml` now emits `role = "auto"` for every `[[databases]]` entry instead of `role = "primary"`, so PgDog detects primary/replica status at runtime (`pg_is_in_recovery()`) and survives a failover/promotion. `lsn_check_delay = 0` is emitted in `[general]` to enable the LSN monitor — without it PgDog disables role detection and `auto` pools are treated as replicas, breaking connections.
+- Generated `users.toml` now emits `all_databases = true` for the admin user instead of a `databases=[...]` array, so `users.toml` no longer changes (and no longer triggers a SIGHUP reload) when databases are added or dropped.
 
 - CI: Semgrep and `codecov-cli` moved from inline `pip3 install` pins to hashed requirements files under `.github/` (`requirements-ci.txt` for Semgrep 1.180.0, `requirements-codecov.txt` for codecov-cli 11.3.1 — separate files because their `click` version constraints conflict), installed with `--require-hashes`. Added `.github/dependabot.yml` covering github-actions and the `/.github` pip requirements.
 

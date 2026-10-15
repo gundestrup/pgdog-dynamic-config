@@ -239,6 +239,8 @@ The tests verify:
 - Missing `POSTGRES_PASSWORD`/`PGDOG_PASSWORD` fails fast with a clear error.
 - A second concurrent invocation reports "skipping this cycle" (lock file).
 - A `users.toml`-only change (e.g. rotated password) is installed even when `pgdog.toml` is unchanged.
+- Databases are emitted with `role = "auto"` (`lsn_check_delay = 0` enables the LSN monitor), so PgDog detects primary/replica roles itself — verified by the `automatic database role detection is enabled` log line.
+- The admin user is emitted with `all_databases = true`, so `users.toml` stays static when databases are added or dropped.
 - The generated config passes `pgdog configcheck` — PgDog's own strict validation.
 - The OpenMetrics endpoint (`openmetrics_port = 9090`) serves `pgdog_`-prefixed metrics. Note: PgDog only starts the metrics listener from its startup configuration — a SIGHUP reload does not spawn it — so metrics require the config to exist when PgDog boots.
 

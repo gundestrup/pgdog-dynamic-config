@@ -336,7 +336,8 @@ assert_contains "$PGDOG_TOML" '\[general\]' "pgdog.toml has [general] section"
 assert_contains "$PGDOG_TOML" 'port = 6432' "pgdog.toml has port = 6432"
 assert_contains "$PGDOG_TOML" 'passthrough_auth = "enabled_plain"' "pgdog.toml has passthrough_auth"
 assert_contains "$PGDOG_TOML" '\[\[databases\]\]' "pgdog.toml has [[databases]] entries"
-assert_contains "$PGDOG_TOML" 'role = "primary"' "pgdog.toml has role = primary"
+assert_contains "$PGDOG_TOML" 'role = "auto"' "pgdog.toml has role = auto (primary/replica auto-detected)"
+assert_contains "$PGDOG_TOML" 'lsn_check_delay = 0' "pgdog.toml enables LSN checks for role detection"
 assert_contains "$PGDOG_TOML" 'host = "db-test"' "pgdog.toml has host = db-test"
 assert_contains "$PGDOG_TOML" 'name = "pgdog"' "pgdog.toml includes pgdog database"
 assert_contains "$PGDOG_TOML" 'name = "appdb"' "pgdog.toml includes appdb database"
@@ -346,8 +347,7 @@ assert_contains "$USERS_TOML" '\[\[users\]\]' "users.toml has [[users]] entries"
 assert_contains "$USERS_TOML" 'name="pgdog"' "users.toml has pgdog user"
 assert_contains "$USERS_TOML" 'database="pgdog"' "users.toml has pgdog database"
 assert_contains "$USERS_TOML" 'name="postgres"' "users.toml has postgres user"
-assert_contains "$USERS_TOML" 'databases=\[' "users.toml has databases array for postgres"
-assert_contains "$USERS_TOML" '"appdb"' "users.toml postgres databases array includes appdb"
+assert_contains "$USERS_TOML" 'all_databases=true' "users.toml postgres user has all_databases"
 
 # Security: passwords should not appear in container logs
 log "Test 2b: No password leakage in container logs"
@@ -445,6 +445,10 @@ esac
 
 log "Test 4: Autonomous loop picks up new database and user (no manual trigger)"
 
+# Snapshot users.toml — with all_databases=true it must NOT change when
+# databases are added or dropped; only pgdog.toml needs regeneration.
+USERS_TOML_BEFORE="$(cat "$USERS_TOML")"
+
 # Create a new database and user in PostgreSQL
 docker exec "$DB_CONTAINER" psql -U postgres -c "CREATE USER newuser WITH PASSWORD '$TEST_NEW_USER_PASSWORD';" 2>/dev/null
 docker exec "$DB_CONTAINER" psql -U postgres -c "CREATE DATABASE newdb OWNER newuser;" 2>/dev/null
@@ -458,8 +462,13 @@ else
   fail "Autonomous loop did not pick up newdb within 30s"
 fi
 
-# Verify the new database appears in users.toml postgres databases array
-assert_contains "$USERS_TOML" '"newdb"' "users.toml postgres databases array includes newdb"
+# users.toml must not change — postgres has all_databases=true, so new
+# databases are covered without a rewrite (fewer regenerations/reloads).
+if [ "$(cat "$USERS_TOML")" = "$USERS_TOML_BEFORE" ]; then
+  pass "users.toml unchanged after database add (all_databases)"
+else
+  fail "users.toml was rewritten after database add — all_databases should make it static"
+fi
 
 # Allow PgDog's SIGHUP reload (triggered by the autonomous loop) to complete
 sleep 2
@@ -471,13 +480,17 @@ case "$PGDOG_LOGS" in
   *"reloading configuration"*) pass "PgDog logged 'reloading configuration' after autonomous update" ;;
   *) fail "PgDog did not log a configuration reload after autonomous update" ;;
 esac
+case "$PGDOG_LOGS" in
+  *"automatic database role detection is enabled"*) pass "PgDog detected database role automatically" ;;
+  *) fail "PgDog did not report automatic role detection" ;;
+esac
 
 # --- Test 5: New user connects through PgDog after dynamic update ---
 
 log "Test 5: New user connects through PgDog after dynamic update"
 
 # The generate-config.sh only creates users for pgdog and postgres.
-# The postgres user's databases array should include newdb,
+# The postgres user has all_databases=true, which covers newdb,
 # so we test connecting as postgres to newdb.
 if PGPASSWORD="$TEST_POSTGRES_PASSWORD" \
   psql -h 127.0.0.1 -p "$PGDOG_PORT" -U postgres -d newdb -t -c "SELECT 1;" 2>/dev/null \
@@ -511,10 +524,10 @@ else
   fail "newdb still present in pgdog.toml 30s after drop"
 fi
 
-if wait_for_absence "$USERS_TOML" '"newdb"' 30; then
-  pass "Autonomous loop removed newdb from users.toml databases array"
+if [ "$(cat "$USERS_TOML")" = "$USERS_TOML_BEFORE" ]; then
+  pass "users.toml unchanged after database drop (all_databases)"
 else
-  fail "newdb still present in users.toml 30s after drop"
+  fail "users.toml was rewritten after database drop — all_databases should make it static"
 fi
 
 # --- Test 6: Idempotency — no change when config is unchanged ---
