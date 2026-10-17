@@ -4,6 +4,10 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped the pinned PgDog version to `v0.1.62` in `versions.env` to match the latest upstream release (automated check).
+
 ## [0.3.0] - 2026-10-15
 
 ### Added
