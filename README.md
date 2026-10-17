@@ -4,7 +4,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![Shell](https://img.shields.io/badge/shell-sh-green)
 ![PgDog](https://img.shields.io/badge/Made_for-PgDog-blue)
-![PgDog tested](https://img.shields.io/badge/PgDog_tested-v0.1.61-success)
+![PgDog tested](https://img.shields.io/badge/PgDog_tested-v0.1.62-success)
 ![PgDog latest](https://img.shields.io/github/v/release/pgdogdev/pgdog?label=PgDog%20latest)
 ![Status](https://img.shields.io/badge/status-active-success)
 [![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gundestrup/pgdog-dynamic-config)

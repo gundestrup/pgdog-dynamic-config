@@ -4,6 +4,10 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped the pinned PgDog version to `v0.1.62` in `versions.env` to match the latest upstream release (automated check).
+
 ### Fixed
 
 - Removed the vulnerable `click` dependency pulled in by Codecov CLI 11.3.1, which constrained `click` below the security-fixed 8.3.3 release. CI now uploads JUnit test results with the already-pinned Codecov Action; removed the unused Codecov CLI requirements lock.
