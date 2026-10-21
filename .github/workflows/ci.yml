@@ -39,6 +39,9 @@ jobs:
   integration-tests:
     name: Integration Tests (${{ matrix.pgdog-target }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     timeout-minutes: 10
     strategy:
       matrix:
@@ -68,8 +71,8 @@ jobs:
         if: always() && matrix.pgdog-target == 'pinned'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           directory: ./coverage
+          use_oidc: true
           flags: integration-tests
           fail_ci_if_error: false
           handle_no_reports_found: true
@@ -78,8 +81,8 @@ jobs:
         if: always() && matrix.pgdog-target == 'pinned'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+          use_oidc: true
           files: ./test-results/junit.xml
           flags: integration-tests
           fail_ci_if_error: false
