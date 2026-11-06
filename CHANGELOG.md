@@ -6,6 +6,7 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ### Changed
 
+- Bumped the pinned PgDog version to `v0.1.64` in `versions.env` to match the latest upstream release (automated check).
 - Bumped the pinned PgDog version to `v0.1.63` in `versions.env` to match the latest upstream release (automated check).
 - Bumped the pinned PgDog version to `v0.1.62` in `versions.env` to match the latest upstream release (automated check).
 
