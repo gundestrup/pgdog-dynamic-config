@@ -697,13 +697,9 @@ if [ -n "$_net" ]; then
     docker exec "$COV_CONTAINER" sh -c 'flock /pgdog/.generate-config.lock sleep 4 & sleep 1; kcov --include-pattern=/pgdog /coverage /pgdog/generate-config.sh' >/dev/null 2>&1 || true
     docker exec -e POLL_INTERVAL_SECONDS=2 "$COV_CONTAINER" timeout -s TERM 8 kcov --include-pattern=/pgdog /coverage /pgdog/entrypoint.sh >/dev/null 2>&1 || true
     docker exec "$COV_CONTAINER" sh -c 'rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp /pgdog/.generate-config.lock' >/dev/null 2>&1 || true
+    docker exec "$COV_CONTAINER" sh -c 'for f in /coverage/*/sonarqube.xml; do sed -i "s|path=\"/|path=\"|g" "$f"; done' || true
     docker rm -f "$COV_CONTAINER" >/dev/null 2>&1 || true
   fi
-  for _sq_xml in "$COVERAGE_DIR"/*/sonarqube.xml; do
-    [ -f "$_sq_xml" ] || continue
-    sed -i.bak 's|path="/|path="|g' "$_sq_xml" || true
-    rm -f "$_sq_xml.bak"
-  done
   _cobertura=$(find "$COVERAGE_DIR" -name cobertura.xml -print -quit 2>/dev/null)
 fi
 

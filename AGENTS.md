@@ -268,10 +268,12 @@ version changes:
   line** — not `sh -c "..."` inline code and not child scripts it
   invokes. Multiple `kcov` runs into the same output dir merge.
 - **kcov `sonarqube.xml` records container paths** (`/pgdog/...`) — the
-  test rewrites them to repo-relative paths so SonarQube Cloud's generic
-  coverage import (`sonar.coverageReportPaths`) can match repo files.
-  Analysis is CI-based (`sonar-project.properties`); automatic analysis
-  cannot import coverage reports.
+  test rewrites them to repo-relative paths inside the coverage
+  container (the `coverage/` subdirs it creates are root-owned on
+  Linux CI runners, so host-side `sed -i` gets EACCES) so SonarQube
+  Cloud's generic coverage import (`sonar.coverageReportPaths`) can
+  match repo files. Analysis is CI-based (`sonar-project.properties`);
+  automatic analysis cannot import coverage reports.
 
 ---
 
