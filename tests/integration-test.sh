@@ -699,6 +699,11 @@ if [ -n "$_net" ]; then
     docker exec "$COV_CONTAINER" sh -c 'rm -f /pgdog/pgdog.toml /pgdog/users.toml /pgdog/pgdog.toml.tmp /pgdog/users.toml.tmp /pgdog/.generate-config.lock' >/dev/null 2>&1 || true
     docker rm -f "$COV_CONTAINER" >/dev/null 2>&1 || true
   fi
+  for _sq_xml in "$COVERAGE_DIR"/*/sonarqube.xml; do
+    [ -f "$_sq_xml" ] || continue
+    sed -i.bak 's|path="/|path="|g' "$_sq_xml" || true
+    rm -f "$_sq_xml.bak"
+  done
   _cobertura=$(find "$COVERAGE_DIR" -name cobertura.xml -print -quit 2>/dev/null)
 fi
 

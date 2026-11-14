@@ -267,6 +267,11 @@ version changes:
 - **kcov only instruments the script named directly on its command
   line** — not `sh -c "..."` inline code and not child scripts it
   invokes. Multiple `kcov` runs into the same output dir merge.
+- **kcov `sonarqube.xml` records container paths** (`/pgdog/...`) — the
+  test rewrites them to repo-relative paths so SonarQube Cloud's generic
+  coverage import (`sonar.coverageReportPaths`) can match repo files.
+  Analysis is CI-based (`sonar-project.properties`); automatic analysis
+  cannot import coverage reports.
 
 ---
 

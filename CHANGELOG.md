@@ -4,6 +4,10 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- SonarQube Cloud CI-based analysis: `sonar-project.properties` plus a `SonarSource/sonarqube-scan-action` step on the pinned integration-test matrix leg, importing the kcov `sonarqube.xml` generic coverage report — automatic analysis cannot ingest coverage, so test coverage now appears on the SonarCloud dashboard. Replaces `.sonarcloud.properties` (AutoScan-only configuration).
+
 ### Changed
 
 - Bumped the pinned PgDog version to `v0.1.65` in `versions.env` to match the latest upstream release (automated check).
