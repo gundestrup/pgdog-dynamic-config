@@ -1,6 +1,4 @@
-<!-- markdownlint-disable MD013 MD033 -->
 # pgdog-dynamic-config <a href="https://gundestrup.github.io/flow/"><img align="right" src="https://gundestrup.github.io/flow/assets/badges/part-of-flow.svg?v=2" alt="Part of Flow software" height="40"></a>
-<!-- markdownlint-enable MD013 MD033 -->
 
 [![codecov](https://codecov.io/gh/gundestrup/pgdog-dynamic-config/branch/main/graph/badge.svg)](https://codecov.io/gh/gundestrup/pgdog-dynamic-config)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
