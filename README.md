@@ -7,7 +7,7 @@
 ![PgDog tested](https://img.shields.io/badge/PgDog_tested-v0.1.65-success)
 ![PgDog latest](https://img.shields.io/github/v/release/pgdogdev/pgdog?label=PgDog%20latest)
 ![Status](https://img.shields.io/badge/status-active-success)
-[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gundestrup/pgdog-dynamic-config)
+[<img src="https://devin.ai/assets/askdeepwiki.png" alt="DeepWiki" height="20"/>](https://deepwiki.com/gundestrup/pgdog-dynamic-config)
 [![CI](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml/badge.svg)](https://github.com/gundestrup/pgdog-dynamic-config/actions/workflows/ci.yml)
 [![Dockerfile](https://img.shields.io/badge/Docker-Dockerfile-2496ED?logo=docker)](pgdog/pgdog-dynamic-config.Dockerfile)
 [![CodeFactor](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config/badge)](https://www.codefactor.io/repository/github/gundestrup/pgdog-dynamic-config)
