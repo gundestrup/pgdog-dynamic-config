@@ -642,7 +642,10 @@ fi
 # which pgdog configcheck does not flag. Assert no WARN/ERROR beyond the
 # known-benign operational notices: missing config at boot (PgDog starts
 # before the sidecar writes it), random admin password, passthrough_auth
-# plaintext notice, and role-detection elections.
+# plaintext notice, role-detection elections, and any line about the
+# newdb backend — the test force-drops it, so ERRORs about killed or
+# refused newdb connections between the DROP and the next config poll
+# are expected (PgDog >= v0.1.66 surfaces server errors at ERROR level).
 
 log "Test 9: No unexpected warnings or errors in PgDog logs"
 
@@ -652,7 +655,8 @@ UNEXPECTED_LOGS=$(docker logs "$PGDOG_CONTAINER" 2>&1 \
   | grep -v 'passthrough_auth.*plaintext' \
   | grep -v "doesn't exist, loading defaults instead" \
   | grep -v 'new primary chosen' \
-  | grep -v 'database role changed in shard' || true)
+  | grep -v 'database role changed in shard' \
+  | grep -v 'newdb]' || true)
 if [ -z "$UNEXPECTED_LOGS" ]; then
   pass "No unexpected WARN/ERROR in PgDog logs"
 else

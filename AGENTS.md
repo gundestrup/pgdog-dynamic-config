@@ -161,7 +161,8 @@ to test another image. No manual setup required.
     SIGHUP reload never spawns it).
 18. PgDog logs contain no WARN/ERROR beyond known-benign operational
     notices (missing config at boot, random admin password,
-    `passthrough_auth` plaintext, role elections) — PgDog reports
+    `passthrough_auth` plaintext, role elections, the forced-drop
+    backend kill on `newdb`) — PgDog reports
     semantic misconfig as warnings, not errors.
 
 ### Critical testing rule

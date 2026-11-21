@@ -18,6 +18,8 @@ All notable changes to `pgdog-dynamic-config` are documented in this file.
 ### Fixed
 
 - Removed the vulnerable `click` dependency pulled in by Codecov CLI 11.3.1, which constrained `click` below the security-fixed 8.3.3 release. CI now uploads JUnit test results with the already-pinned Codecov Action; removed the unused Codecov CLI requirements lock.
+- Integration Test 9 (PgDog log hygiene) now allowlists WARN/ERROR lines about the `newdb` backend — PgDog v0.1.66 surfaces server errors at ERROR level (`connection terminated by administrator command`, `database "newdb" does not exist`), which are expected in the window between the test's `DROP DATABASE ... WITH (FORCE)` and the next config poll removing `newdb`.
+- `pgdog-upgrade.yml` "Report incompatibility" step: `gh issue list` does not accept `--arg` with `--jq`, so the existing-issue lookup always failed and the workflow opened a duplicate issue on every failed run; the title match is now done by piping `--json` output to `jq --arg`.
 
 ## [0.3.0] - 2026-10-15
 

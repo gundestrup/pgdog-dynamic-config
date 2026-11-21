@@ -63,7 +63,7 @@ jobs:
           body="The scheduled upgrade workflow ran the integration suite against PgDog $LATEST and it failed. The pinned version stays at $CURRENT until this is resolved.
 
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 100 --json number,title --jq --arg t "$title" '.[] | select(.title == $t) | .number' | head -n1)"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 100 --json number,title | jq -r --arg t "$title" '.[] | select(.title == $t) | .number' | head -n1)"
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
